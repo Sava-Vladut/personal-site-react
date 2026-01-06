@@ -3,10 +3,10 @@
   height: 720px;
   max-width: 95vw;
   max-height: 90vh;
-  background: rgba(12, 12, 12, 0.95);
+  background: var(--bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.3);
   display: flex;
@@ -27,18 +27,18 @@
 }
 
 .terminal-header {
-  background: rgba(20, 20, 20, 0.95);
+  background: var(--bg-header);
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-soft);
   user-select: none;
 }
 
 .terminal-title {
   margin-left: 16px;
-  color: #ccc;
+  color: var(--text);
   font-size: 0.85rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Win11 System Font for title */
   display: flex;
@@ -49,7 +49,7 @@
 .terminal-icon {
   font-family: 'Courier New', Courier, monospace;
   font-weight: bold;
-  color: #00ff00;
+  color: var(--prompt);
 }
 
 .window-controls {
@@ -60,7 +60,7 @@
 .control-btn {
   background: transparent;
   border: none;
-  color: #ccc;
+  color: var(--text);
   width: 46px;
   height: 100%;
   display: flex;
@@ -87,7 +87,7 @@
   padding: 24px;
   flex: 1;
   overflow-y: auto;
-  color: #ccc; /* Default text color to grey/white */
+  color: var(--text); /* Default text color to grey/white */
   font-size: 1rem;
   cursor: text;
 }
@@ -97,16 +97,16 @@
   width: 10px;
 }
 .terminal-body::-webkit-scrollbar-track {
-  background: #0c0c0c;
+  background: var(--scroll-track);
 }
 .terminal-body::-webkit-scrollbar-thumb {
-  background: #333;
-  border: 2px solid #0c0c0c;
+  background: var(--scroll-thumb);
+  border: 2px solid var(--scroll-track);
 }
 
 .command-line {
   margin-bottom: 4px;
-  color: #fff;
+  color: var(--text);
   font-weight: bold;
 }
 
@@ -122,7 +122,7 @@
 }
 
 .prompt {
-  color: #00ff00;
+  color: var(--prompt);
   margin-right: 10px;
   font-weight: bold;
 }
@@ -130,7 +130,7 @@
 .terminal-input {
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text);
   font-family: 'Courier New', Courier, monospace;
   font-size: 1rem;
   font-weight: bold;
@@ -156,32 +156,43 @@
 }
 
 .permissions { color: #d7ba7d; }
-.owner { color: #4ec9b0; }
-.size { color: #b5cea8; }
+.owner { color: var(--link); }
+.size { color: var(--muted); }
 .date { color: #569cd6; }
 .name { 
-  color: #ce9178; 
+  color: var(--accent); 
   font-weight: bold;
 }
 
 .details {
   margin-top: 4px;
   margin-left: 0;
-  color: #888;
+  color: var(--muted);
   font-size: 0.9em;
   padding-left: 14px;
-  border-left: 2px solid #333;
+  border-left: 2px solid var(--scroll-thumb);
 }
 
 .links a {
-  color: #4ec9b0;
+  color: var(--link);
   text-decoration: none;
-  border-bottom: 1px dotted #4ec9b0;
+  border-bottom: 1px dotted var(--link);
 }
 
 .links a:hover {
-  background: #4ec9b0;
-  color: #000;
+  background: var(--link-hover-bg);
+  color: var(--link-hover-text);
+}
+
+.linkified {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--link);
+}
+
+.linkified:hover {
+  background: var(--link-hover-bg);
+  color: var(--link-hover-text);
 }
 
 /* ASCII Art Wave Animation */
@@ -192,7 +203,7 @@
 
 .wave-char {
   display: inline-block;
-  color: #00ff00;
+  color: var(--prompt);
   animation: waveMotion 1s ease-in-out infinite;
   will-change: transform;
 }

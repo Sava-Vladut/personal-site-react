@@ -1,0 +1,47 @@
+.terminal-window {
+  --bg: rgba(12, 12, 12, 0.95);
+  --bg-header: rgba(20, 20, 20, 0.95);
+  --text: #ccc;
+  --muted: #888;
+  --prompt: #00ff00;
+  --accent: #ce9178;
+  --link: #4ec9b0;
+  --link-hover-bg: #4ec9b0;
+  --link-hover-text: #000;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-soft: rgba(255, 255, 255, 0.05);
+  --scroll-track: #0c0c0c;
+  --scroll-thumb: #333;
+}
+
+.terminal-window.theme-amber {
+  --bg: rgba(24, 18, 8, 0.96);
+  --bg-header: rgba(32, 24, 10, 0.96);
+  --text: #f2d5a6;
+  --muted: #c9a873;
+  --prompt: #ffb300;
+  --accent: #ffd59e;
+  --link: #ffb300;
+  --link-hover-bg: #ffb300;
+  --link-hover-text: #2a1a00;
+  --border: rgba(255, 179, 0, 0.15);
+  --border-soft: rgba(255, 179, 0, 0.08);
+  --scroll-track: #1a1207;
+  --scroll-thumb: #3a2a10;
+}
+
+.terminal-window.theme-solar {
+  --bg: rgba(0, 43, 54, 0.95);
+  --bg-header: rgba(7, 54, 66, 0.95);
+  --text: #93a1a1;
+  --muted: #6b7c7c;
+  --prompt: #b58900;
+  --accent: #2aa198;
+  --link: #268bd2;
+  --link-hover-bg: #268bd2;
+  --link-hover-text: #002b36;
+  --border: rgba(147, 161, 161, 0.15);
+  --border-soft: rgba(147, 161, 161, 0.08);
+  --scroll-track: #00212b;
+  --scroll-thumb: #0c4a57;
+}

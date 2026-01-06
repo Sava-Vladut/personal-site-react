@@ -1,75 +1,20 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
-import './App.css'
+import { useEffect, useRef, useState } from 'react'
+import './styles/terminal.css'
+import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
 import linksText from '../links.txt?raw'
-
-type ProjectLink = {
-  label: string
-  url: string
-}
-
-type ProjectData = {
-  title: string
-  description: string
-  year?: string
-  date?: string
-  role?: string
-  tags?: string[]
-  size?: string
-  filename?: string
-  links?: ProjectLink[]
-}
-
-type HistoryItem = {
-  id: string
-  type: 'command' | 'output'
-  content: React.ReactNode
-}
-
-const projectModules = import.meta.glob<{ default: ProjectData }>(
-  './projects/*/project.json',
-  { eager: true },
-)
-
-const projects = Object.entries(projectModules)
-  .map(([path, module]) => {
-    const data = module.default
-    const folder = path.split('/').slice(0, -1).join('/')
-    const slug = folder.split('/').pop() ?? folder
-    return { ...data, slug }
-  })
-  .sort((a, b) => (b.year ?? '').localeCompare(a.year ?? ''))
-
-const AsciiWave = ({ text }: { text: string }) => {
-  const lines = useMemo(() => text.split('\n'), [text])
-  
-  return (
-    <div style={{ lineHeight: '1.2', fontSize: '0.64rem', fontFamily: 'monospace', whiteSpace: 'pre' }}>
-      {lines.map((line, lineIndex) => (
-        <div key={lineIndex}>
-          {line.split('').map((char, charIndex) => {
-            if (char === ' ') return ' '
-            return (
-              <span
-                key={charIndex}
-                className="wave-char"
-                style={{
-                  animationDelay: `${(charIndex + lineIndex) * 0.02}s`
-                }}
-              >
-                {char}
-              </span>
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  )
-}
+import AsciiWave from './components/AsciiWave'
+import LinkifiedText from './components/LinkifiedText'
+import TerminalBody from './components/TerminalBody'
+import TerminalHeader from './components/TerminalHeader'
+import type { HistoryItem } from './types/terminal'
 
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(true)
+  const [theme, setTheme] = useState('matrix')
+  const [commandHistory, setCommandHistory] = useState<string[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
   const [history, setHistory] = useState<HistoryItem[]>([
     {
       id: 'banner',
@@ -96,11 +41,17 @@ function App() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
 
+  const themes = ['matrix', 'amber', 'solar']
+  const commands = ['help', 'user', 'links', 'theme', 'clear']
+
   const handleCommand = () => {
     if (!input.trim()) return
 
     const cmd = input.trim()
-    const lowerCmd = cmd.toLowerCase()
+    const parts = cmd.split(/\s+/)
+    const lowerCmd = parts[0]?.toLowerCase() ?? ''
+    setCommandHistory((prev) => [...prev, cmd])
+    setHistoryIndex(-1)
 
     // Add command to history
     const newHistory = [...history, {
@@ -119,8 +70,8 @@ function App() {
             <div>
               <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>ls</span>   &nbsp;&nbsp;&nbsp;&nbsp;List all projects</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
@@ -143,45 +94,50 @@ function App() {
         })
         break
 
-      case 'ls':
-        newHistory.push({
-          id: crypto.randomUUID(),
-          type: 'output',
-          content: (
-            <div className="project-list-container">
-              <ul className="project-list">
-                {projects.map((p) => (
-                  <li key={p.slug} className="project-item">
-                    <span className="owner"> vlad </span>
-                    <span className="size"> {p.size || '4096'} </span>
-                    <span className="date"> {p.date || p.year || '2024'} </span>
-                    <span className="name">{p.filename || p.title}</span>
-                    <div className="details">
-                       {p.description}
-                     {p.links && p.links.length > 0 && (
-                       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                       <span className="links"> [ {p.links.map(l => <a key={l.url} href={l.url} target="_blank" rel="noreferrer">{l.label}</a>).reduce((prev, curr) => [prev, ', ', curr] as any)} ]</span>
-                     )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            </div>
-          )
-        })
-        break
-
       case 'links':
         newHistory.push({
           id: crypto.randomUUID(),
           type: 'output',
           content: (
-            <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-              {linksText.trim() ? linksText : 'No links found.'}
-            </pre>
+            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              <LinkifiedText text={linksText} />
+            </div>
           ),
         })
         break
+
+      case 'theme': {
+        if (parts.length === 1) {
+          newHistory.push({
+            id: crypto.randomUUID(),
+            type: 'output',
+            content: (
+              <div>
+                <div>Current theme: <span style={{color: '#ce9178'}}>{theme}</span></div>
+                <div>Available: {themes.join(', ')}</div>
+                <div>Usage: <span style={{color: '#ce9178'}}>theme</span> &lt;name&gt;</div>
+              </div>
+            ),
+          })
+          break
+        }
+        const nextTheme = parts[1].toLowerCase()
+        if (!themes.includes(nextTheme)) {
+          newHistory.push({
+            id: crypto.randomUUID(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>Unknown theme: {nextTheme}</span>,
+          })
+          break
+        }
+        setTheme(nextTheme)
+        newHistory.push({
+          id: crypto.randomUUID(),
+          type: 'output',
+          content: <span style={{color: '#4ec9b0'}}>Theme switched to {nextTheme}</span>,
+        })
+        break
+      }
 
       case 'clear':
         setHistory([])
@@ -200,51 +156,77 @@ function App() {
     setInput('')
   }
 
-  return (
-    <div className={`terminal-window ${maximized ? 'maximized' : ''}`} onClick={focusInput}>
-      <div className="terminal-header">
-        <div className="terminal-title">
-          <span className="terminal-icon">_&gt;</span>
-          guest@portfolio: ~
-        </div>
-        <div className="window-controls">
-          <button className="control-btn minimize" aria-label="Minimize">
-            <svg width="10" height="1" viewBox="0 0 10 1"><path d="M0 0h10v1H0z" fill="currentColor"/></svg>
-          </button>
-          <button className="control-btn maximize" aria-label="Maximize" onClick={() => setMaximized(!maximized)}>
-            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1v8h8V1H1zm9 9H0V0h10v10z" fill="currentColor"/></svg>
-          </button>
-          <button className="control-btn close" aria-label="Close">
-            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 1l8 8m0-8l-8 8" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
-          </button>
-        </div>
-      </div>
-      <div className="terminal-body">
-        {history.map(item => (
-          <div key={item.id} className={item.type === 'command' ? 'command-line' : 'output-line'}>
-            {item.type === 'command' && <span className="prompt">{'>'}</span>}
-            {item.content}
-          </div>
-        ))}
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleCommand()
+      return
+    }
 
-        <div className="input-line">
-          <span className="prompt">{'>'}</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCommand()
-            }}
-            className="terminal-input"
-            autoFocus
-            autoComplete="off"
-            spellCheck="false"
-          />
-        </div>
-        <div ref={bottomRef} />
-      </div>
+    if (event.key === 'ArrowUp') {
+      if (commandHistory.length === 0) return
+      event.preventDefault()
+      const nextIndex = historyIndex === -1
+        ? commandHistory.length - 1
+        : Math.max(0, historyIndex - 1)
+      setHistoryIndex(nextIndex)
+      setInput(commandHistory[nextIndex])
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      if (commandHistory.length === 0) return
+      if (historyIndex === -1) return
+      event.preventDefault()
+      const nextIndex = historyIndex + 1
+      if (nextIndex >= commandHistory.length) {
+        setHistoryIndex(-1)
+        setInput('')
+        return
+      }
+      setHistoryIndex(nextIndex)
+      setInput(commandHistory[nextIndex])
+      return
+    }
+
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      const raw = input.trim()
+      if (!raw) return
+      const matches = commands.filter((cmd) => cmd.startsWith(raw.toLowerCase()))
+      if (matches.length === 1) {
+        setInput(matches[0])
+        return
+      }
+      if (matches.length > 1) {
+        setHistory((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            type: 'output',
+            content: <span>{matches.join('  ')}</span>
+          }
+        ])
+      }
+    }
+  }
+
+  return (
+    <div className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''}`} onClick={focusInput}>
+      <TerminalHeader
+        title="grim@portofolio: ~"
+        onToggleMaximize={() => setMaximized(!maximized)}
+      />
+      <TerminalBody
+        history={history}
+        input={input}
+        inputRef={inputRef}
+        bottomRef={bottomRef}
+        onInputChange={(value) => {
+          setInput(value)
+          setHistoryIndex(-1)
+        }}
+        onKeyDown={handleKeyDown}
+      />
     </div>
   )
 }
