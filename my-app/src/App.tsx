@@ -9,6 +9,23 @@ import TerminalBody from './components/TerminalBody'
 import TerminalHeader from './components/TerminalHeader'
 import type { HistoryItem } from './types/terminal'
 
+const createId = () => {
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(16)
+      crypto.getRandomValues(bytes)
+      bytes[6] = (bytes[6] & 0x0f) | 0x40
+      bytes[8] = (bytes[8] & 0x3f) | 0x80
+      const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'))
+      return `${hex[0]}${hex[1]}${hex[2]}${hex[3]}-${hex[4]}${hex[5]}-${hex[6]}${hex[7]}-${hex[8]}${hex[9]}-${hex[10]}${hex[11]}${hex[12]}${hex[13]}${hex[14]}${hex[15]}`
+    }
+  }
+  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(true)
@@ -55,7 +72,7 @@ function App() {
 
     // Add command to history
     const newHistory = [...history, {
-      id: crypto.randomUUID(),
+      id: createId(),
       type: 'command',
       content: cmd
     } as HistoryItem]
@@ -64,7 +81,7 @@ function App() {
     switch (lowerCmd) {
       case 'help':
         newHistory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           type: 'output',
           content: (
             <div>
@@ -81,7 +98,7 @@ function App() {
 
       case 'user':
         newHistory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           type: 'output',
           content: (
             <div>
@@ -96,7 +113,7 @@ function App() {
 
       case 'links':
         newHistory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           type: 'output',
           content: (
             <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
@@ -109,7 +126,7 @@ function App() {
       case 'theme': {
         if (parts.length === 1) {
           newHistory.push({
-            id: crypto.randomUUID(),
+            id: createId(),
             type: 'output',
             content: (
               <div>
@@ -124,7 +141,7 @@ function App() {
         const nextTheme = parts[1].toLowerCase()
         if (!themes.includes(nextTheme)) {
           newHistory.push({
-            id: crypto.randomUUID(),
+            id: createId(),
             type: 'output',
             content: <span style={{color: '#e81123'}}>Unknown theme: {nextTheme}</span>,
           })
@@ -132,7 +149,7 @@ function App() {
         }
         setTheme(nextTheme)
         newHistory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           type: 'output',
           content: <span style={{color: '#4ec9b0'}}>Theme switched to {nextTheme}</span>,
         })
@@ -146,7 +163,7 @@ function App() {
 
       default:
         newHistory.push({
-          id: crypto.randomUUID(),
+          id: createId(),
           type: 'output',
           content: <span style={{color: '#e81123'}}>Command not found: {cmd}</span>
         })
@@ -201,7 +218,7 @@ function App() {
         setHistory((prev) => [
           ...prev,
           {
-            id: crypto.randomUUID(),
+            id: createId(),
             type: 'output',
             content: <span>{matches.join('  ')}</span>
           }
