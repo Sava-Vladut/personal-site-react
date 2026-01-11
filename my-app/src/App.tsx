@@ -170,7 +170,8 @@ function App() {
     const online = Boolean(data?.online)
     const playersOnline = data?.players?.online
     const playersMax = data?.players?.max
-    return { online, playersOnline, playersMax }
+    const version = typeof data?.version === 'string' ? data.version : ''
+    return { online, playersOnline, playersMax, version }
   }
 
   const handleCommand = async () => {
@@ -249,12 +250,18 @@ function App() {
             const statusText = status.online
               ? `Players online: ${status.playersOnline ?? 0}${status.playersMax ? `/${status.playersMax}` : ''}`
               : 'Server is offline.'
+            const versionText = status.version ? `Version: ${status.version}` : 'Version: unknown'
             setHistory((prev) => [
               ...prev,
               {
                 id: createId(),
                 type: 'output',
-                content: <span>{statusText}</span>
+                content: (
+                  <div>
+                    <div>{statusText}</div>
+                    <div>{versionText}</div>
+                  </div>
+                )
               }
             ])
           })
@@ -437,6 +444,17 @@ function App() {
         const arg = hasTrailingSpace ? '' : (parts[1] ?? '')
         const matches = projectFolders
           .filter((folder) => folder.toLowerCase().startsWith(arg.toLowerCase()))
+          .sort((a, b) => a.localeCompare(b))
+        if (matches.length > 0) {
+          setInput(`${commandToken} ${matches[0]}`)
+        }
+        return
+      }
+
+      if (canonicalCommand === 'theme') {
+        const arg = hasTrailingSpace ? '' : (parts[1] ?? '')
+        const matches = themes
+          .filter((themeOption) => themeOption.toLowerCase().startsWith(arg.toLowerCase()))
           .sort((a, b) => a.localeCompare(b))
         if (matches.length > 0) {
           setInput(`${commandToken} ${matches[0]}`)
