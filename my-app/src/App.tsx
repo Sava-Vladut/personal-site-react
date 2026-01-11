@@ -71,6 +71,8 @@ function App() {
 
   // Auto-focus input on click anywhere
   const focusInput = () => {
+    const selection = window.getSelection?.()
+    if (selection && selection.toString()) return
     inputRef.current?.focus()
   }
 
