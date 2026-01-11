@@ -3,11 +3,30 @@ import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
 import linksText from '../links.txt?raw'
+import downloadsText from '../downloads.txt?raw'
 import AsciiWave from './components/AsciiWave'
 import LinkifiedText from './components/LinkifiedText'
 import TerminalBody from './components/TerminalBody'
 import TerminalHeader from './components/TerminalHeader'
 import type { HistoryItem } from './types/terminal'
+
+type DownloadItem = {
+  label: string
+  url: string
+}
+
+const downloadList = downloadsText
+  .split('\n')
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith('#'))
+  .map((line) => {
+    const [labelPart, urlPart] = line.includes('|')
+      ? line.split('|').map((part) => part.trim())
+      : ['', line]
+    const url = urlPart || line
+    const label = labelPart || url.split('/').pop() || url
+    return { label, url } satisfies DownloadItem
+  })
 
 const createId = () => {
   if (typeof crypto !== 'undefined') {
@@ -59,7 +78,7 @@ function App() {
   }, [history])
 
   const themes = ['matrix', 'amber', 'solar']
-  const commands = ['help', 'user', 'links', 'theme', 'clear']
+  const commands = ['help', 'user', 'projects', 'links', 'theme', 'clear']
 
   const handleCommand = () => {
     if (!input.trim()) return
@@ -87,6 +106,7 @@ function App() {
             <div>
               <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;List all projects</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
@@ -106,6 +126,29 @@ function App() {
               ROLE: Full Stack Developer<br/>
               STATUS: Online<br/>
               MISSION: Building digital experiences.
+            </div>
+          )
+        })
+        break
+
+      case 'projects':
+        newHistory.push({
+          id: createId(),
+          type: 'output',
+          content: (
+            <div className="project-list">
+              {downloadList.length === 0 ? (
+                <div>No project downloads found.</div>
+              ) : (
+                downloadList.map((archive) => (
+                  <div className="project-item" key={archive.label}>
+                    <span>{archive.label} </span>
+                    <a className="download-link" href={archive.url} target="_blank" rel="noreferrer">
+                      [DOWNLOAD]
+                    </a>
+                  </div>
+                ))
+              )}
             </div>
           )
         })

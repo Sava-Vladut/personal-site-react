@@ -1,1 +1,2 @@
-https://github.com/Grim-Github
+https://github.com/Grim-Github - Github
+http://grimnetwork.srvp.ro:5000/ - Twitch Mining Site

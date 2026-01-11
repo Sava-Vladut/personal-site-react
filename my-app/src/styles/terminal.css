@@ -155,6 +155,17 @@
   margin-right: 12px;
 }
 
+.download-link {
+  color: #d7ba7d;
+  text-decoration: none;
+  border-bottom: 1px dotted #d7ba7d;
+}
+
+.download-link:hover {
+  background: rgba(215, 186, 125, 0.2);
+  color: #ffd59e;
+}
+
 .permissions { color: #d7ba7d; }
 .owner { color: var(--link); }
 .size { color: var(--muted); }
