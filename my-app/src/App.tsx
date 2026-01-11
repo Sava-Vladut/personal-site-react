@@ -4,6 +4,8 @@ import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
 import linksText from '../links.txt?raw'
 import downloadsText from '../downloads.txt?raw'
+import userText from '../user.txt?raw'
+import minecraftText from '../minecraft.txt?raw'
 import AsciiWave from './components/AsciiWave'
 import LinkifiedText from './components/LinkifiedText'
 import TerminalBody from './components/TerminalBody'
@@ -78,7 +80,7 @@ function App() {
   }, [history])
 
   const themes = ['matrix', 'amber', 'solar']
-  const commands = ['help', 'user', 'projects', 'links', 'theme', 'clear']
+  const commands = ['help', 'user', 'minecraft', 'projects', 'links', 'theme', 'clear']
 
   const handleCommand = () => {
     if (!input.trim()) return
@@ -106,6 +108,7 @@ function App() {
             <div>
               <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>minecraft</span> &nbsp;Show Minecraft server info</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;List all projects</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
@@ -121,11 +124,20 @@ function App() {
           id: createId(),
           type: 'output',
           content: (
-            <div>
-              NAME: Vlad<br/>
-              ROLE: Full Stack Developer<br/>
-              STATUS: Online<br/>
-              MISSION: Building digital experiences.
+            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              {userText}
+            </div>
+          )
+        })
+        break
+
+      case 'minecraft':
+        newHistory.push({
+          id: createId(),
+          type: 'output',
+          content: (
+            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              {minecraftText}
             </div>
           )
         })
