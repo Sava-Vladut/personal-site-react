@@ -6,6 +6,7 @@ import linksText from '../links.txt?raw'
 import downloadsText from '../downloads.txt?raw'
 import userText from '../user.txt?raw'
 import minecraftText from '../minecraft.txt?raw'
+import commandsText from '../commands.txt?raw'
 import AsciiWave from './components/AsciiWave'
 import LinkifiedText from './components/LinkifiedText'
 import TerminalBody from './components/TerminalBody'
@@ -15,6 +16,7 @@ import type { HistoryItem } from './types/terminal'
 type DownloadItem = {
   label: string
   url: string
+  folder: string
 }
 
 const downloadList = downloadsText
@@ -22,13 +24,56 @@ const downloadList = downloadsText
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith('#'))
   .map((line) => {
-    const [labelPart, urlPart] = line.includes('|')
+    const parts = line.includes('|')
       ? line.split('|').map((part) => part.trim())
       : ['', line]
+    const [labelPart, urlPart, folderPart] = parts
     const url = urlPart || line
     const label = labelPart || url.split('/').pop() || url
-    return { label, url } satisfies DownloadItem
+    const folder = folderPart || 'general'
+    return { label, url, folder } satisfies DownloadItem
   })
+
+const DEFAULT_COMMANDS = ['help', 'user', 'minecraft', 'projects', 'links', 'theme', 'miner', 'clear']
+const minecraftIp = (() => {
+  const match = minecraftText.match(/SERVER IP:\s*(.+)/i)
+  return match ? match[1].trim() : minecraftText.trim()
+})()
+
+const parseCommandAliases = (text: string, fallback: string[]) => {
+  const aliasMap = new Map<string, string>()
+  const canonicalSet = new Set<string>()
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+
+  if (lines.length === 0) {
+    fallback.forEach((command) => {
+      const normalized = command.toLowerCase()
+      aliasMap.set(normalized, normalized)
+      canonicalSet.add(normalized)
+    })
+  } else {
+    lines.forEach((line) => {
+      const [canonicalPart, aliasPart = ''] = line.split(':')
+      const canonical = canonicalPart.trim().toLowerCase()
+      if (!canonical) return
+      canonicalSet.add(canonical)
+      aliasMap.set(canonical, canonical)
+      aliasPart
+        .split(',')
+        .map((alias) => alias.trim().toLowerCase())
+        .filter(Boolean)
+        .forEach((alias) => aliasMap.set(alias, canonical))
+    })
+  }
+
+  return {
+    aliasMap,
+    commands: Array.from(aliasMap.keys())
+  }
+}
 
 const createId = () => {
   if (typeof crypto !== 'undefined') {
@@ -82,14 +127,44 @@ function App() {
   }, [history])
 
   const themes = ['matrix', 'amber', 'solar']
-  const commands = ['help', 'user', 'minecraft', 'projects', 'links', 'theme', 'clear']
+  const { aliasMap, commands } = parseCommandAliases(commandsText, DEFAULT_COMMANDS)
+
+  const handleCopyMinecraftIp = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    if (!minecraftIp) return
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(minecraftIp)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = minecraftIp
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+    } catch {
+      setHistory((prev) => [
+        ...prev,
+        {
+          id: createId(),
+          type: 'output',
+          content: <span style={{color: '#e81123'}}>Failed to copy Minecraft IP.</span>
+        }
+      ])
+    }
+  }
 
   const handleCommand = () => {
     if (!input.trim()) return
 
     const cmd = input.trim()
     const parts = cmd.split(/\s+/)
-    const lowerCmd = parts[0]?.toLowerCase() ?? ''
+    const rawCmd = parts[0]?.toLowerCase() ?? ''
+    const lowerCmd = aliasMap.get(rawCmd) ?? rawCmd
     setCommandHistory((prev) => [...prev, cmd])
     setHistoryIndex(-1)
 
@@ -111,9 +186,10 @@ function App() {
               <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>minecraft</span> &nbsp;Show Minecraft server info</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;List all projects</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>miner</span> &nbsp;Open mining dashboard</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
@@ -138,14 +214,37 @@ function App() {
           id: createId(),
           type: 'output',
           content: (
-            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-              {minecraftText}
+            <div className="project-item">
+              <span>SERVER IP: {minecraftIp}</span>
+              <a className="download-link" href="#" onClick={handleCopyMinecraftIp}>
+                [COPY]
+              </a>
             </div>
           )
         })
         break
 
-      case 'projects':
+      case 'projects': {
+        const folderFilter = parts[1]?.toLowerCase()
+        const availableFolders = Array.from(
+          new Set(downloadList.map((archive) => archive.folder))
+        ).sort((a, b) => a.localeCompare(b))
+        if (!folderFilter) {
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: (
+              <div>
+                <div>Usage: <span style={{color: '#ce9178'}}>projects</span> &lt;folder&gt;</div>
+                <div>Available folders: {availableFolders.join(', ')}</div>
+              </div>
+            )
+          })
+          break
+        }
+        const filteredDownloads = downloadList.filter(
+          (archive) => archive.folder.toLowerCase() === folderFilter
+        )
         newHistory.push({
           id: createId(),
           type: 'output',
@@ -153,8 +252,13 @@ function App() {
             <div className="project-list">
               {downloadList.length === 0 ? (
                 <div>No project downloads found.</div>
+              ) : filteredDownloads.length === 0 ? (
+                <div>
+                  <div>No projects found in folder: {folderFilter}</div>
+                  <div>Available folders: {availableFolders.join(', ')}</div>
+                </div>
               ) : (
-                downloadList.map((archive) => (
+                filteredDownloads.map((archive) => (
                   <div className="project-item" key={archive.label}>
                     <span>{archive.label} </span>
                     <a className="download-link" href={archive.url} target="_blank" rel="noreferrer">
@@ -167,6 +271,7 @@ function App() {
           )
         })
         break
+      }
 
       case 'links':
         newHistory.push({
@@ -212,6 +317,15 @@ function App() {
         })
         break
       }
+
+      case 'miner':
+        window.open('http://grimnetwork.srvp.ro:5000/', '_blank', 'noopener,noreferrer')
+        newHistory.push({
+          id: createId(),
+          type: 'output',
+          content: <span style={{color: '#4ec9b0'}}>Opening mining dashboard...</span>,
+        })
+        break
 
       case 'clear':
         setHistory([])

@@ -1,10 +1,9 @@
 # One download link per line.
-# Optional format: Label | URL
+# Optional format: Label | URL | Folder
 # Example:
-Gaborpunk Alpha.rar | https://drive.google.com/file/d/17jPqrzx-fY0FYujFRWPNT0cL0Cybx0i1/view
-The Binding Of Gabor 0.1.rar | https://drive.google.com/file/d/1p0hJI-LHSRxFYEK87viWZF-5pAQ5zvHu/view?usp=drive_link
-Gabor Rooms 1.1.rar | https://drive.google.com/file/d/1prCwTUgQB1YrZkEzwJUj1LOcTyX-rrQQ/view?usp=drive_link
-Gaborpunk 0.1.rar | https://drive.google.com/file/d/1kqzJHLmtjgjEOySdBB06TAE9WULwsNaw/view?usp=drive_link
-Gaborpunk 0.2.rar | https://drive.google.com/file/d/18L1fTrIiH3nELH56_nhFQCvgQPWk-68f/view?usp=drive_link
-Gaborson 0.1.rar| https://drive.google.com/file/d/1FCYKxXQIBvVZyCcwAlNOzqABwSNRJ4-O/view?usp=drive_link
-The Binding Of Gabor 0.1.rar | https://drive.google.com/file/d/1p0hJI-LHSRxFYEK87viWZF-5pAQ5zvHu/view?usp=drive_link
+gaborpunk/Gaborpunk_Alpha.rar | https://drive.google.com/file/d/17jPqrzx-fY0FYujFRWPNT0cL0Cybx0i1/view | gaborpunk
+binding/The_Binding_Of_Gabor_0.1.rar | https://drive.google.com/file/d/1p0hJI-LHSRxFYEK87viWZF-5pAQ5zvHu/view?usp=drive_link | binding
+rooms/Gabor_Rooms_1.1.rar | https://drive.google.com/file/d/1prCwTUgQB1YrZkEzwJUj1LOcTyX-rrQQ/view?usp=drive_link | rooms
+gaborpunk/Gaborpunk_0.1.rar | https://drive.google.com/file/d/1kqzJHLmtjgjEOySdBB06TAE9WULwsNaw/view?usp=drive_link | gaborpunk
+gaborpunk/Gaborpunk_0.2.rar | https://drive.google.com/file/d/18L1fTrIiH3nELH56_nhFQCvgQPWk-68f/view?usp=drive_link | gaborpunk
+gaborpunk/Gaborson_0.1.rar | https://drive.google.com/file/d/1FCYKxXQIBvVZyCcwAlNOzqABwSNRJ4-O/view?usp=drive_link | gaborpunk
