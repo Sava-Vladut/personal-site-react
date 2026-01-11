@@ -90,6 +90,9 @@
   color: var(--text); /* Default text color to grey/white */
   font-size: 1rem;
   cursor: text;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 /* Scrollbar styling for webkit */
@@ -105,13 +108,11 @@
 }
 
 .command-line {
-  margin-bottom: 4px;
   color: var(--text);
   font-weight: bold;
 }
 
 .output-line {
-  margin-bottom: 16px;
   line-height: 1.6;
   white-space: pre-wrap;
 }
@@ -188,6 +189,37 @@
   color: var(--link);
   text-decoration: none;
   border-bottom: 1px dotted var(--link);
+}
+
+.ascii-wave {
+  line-height: 1.2;
+  font-size: 0.64rem;
+  font-family: monospace;
+  white-space: pre;
+  color: #00ff66;
+}
+
+.ascii-wave-line {
+  animation: ascii-wave-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes ascii-wave-float {
+  0% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ascii-wave-line {
+    animation: none;
+  }
 }
 
 .links a:hover {

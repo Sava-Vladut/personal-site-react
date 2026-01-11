@@ -8,9 +8,15 @@ const AsciiWave = ({ text }: AsciiWaveProps) => {
   const lines = useMemo(() => text.split('\n'), [text])
 
   return (
-    <div style={{ lineHeight: '1.2', fontSize: '0.64rem', fontFamily: 'monospace', whiteSpace: 'pre' }}>
+    <div className="ascii-wave">
       {lines.map((line, lineIndex) => (
-        <div key={lineIndex}>{line}</div>
+        <div
+          key={lineIndex}
+          className="ascii-wave-line"
+          style={{ animationDelay: `${lineIndex * 0.12}s` }}
+        >
+          {line}
+        </div>
       ))}
     </div>
   )

@@ -128,6 +128,9 @@ function App() {
 
   const themes = ['matrix', 'amber', 'solar']
   const { aliasMap, commands } = parseCommandAliases(commandsText, DEFAULT_COMMANDS)
+  const projectFolders = Array.from(
+    new Set(downloadList.map((archive) => archive.folder))
+  ).sort((a, b) => a.localeCompare(b))
 
   const handleCopyMinecraftIp = async (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
@@ -158,15 +161,23 @@ function App() {
     }
   }
 
-  const handleCommand = () => {
-    if (!input.trim()) return
+  const fetchMinecraftStatus = async () => {
+    const response = await fetch(`https://api.mcsrvstat.us/2/${minecraftIp}`)
+    if (!response.ok) {
+      throw new Error('Status request failed')
+    }
+    const data = await response.json()
+    const online = Boolean(data?.online)
+    const playersOnline = data?.players?.online
+    const playersMax = data?.players?.max
+    return { online, playersOnline, playersMax }
+  }
 
+  const handleCommand = async () => {
     const cmd = input.trim()
     const parts = cmd.split(/\s+/)
     const rawCmd = parts[0]?.toLowerCase() ?? ''
     const lowerCmd = aliasMap.get(rawCmd) ?? rawCmd
-    setCommandHistory((prev) => [...prev, cmd])
-    setHistoryIndex(-1)
 
     // Add command to history
     const newHistory = [...history, {
@@ -174,6 +185,15 @@ function App() {
       type: 'command',
       content: cmd
     } as HistoryItem]
+
+    if (!cmd) {
+      setHistory(newHistory)
+      setInput('')
+      return
+    }
+
+    setCommandHistory((prev) => [...prev, cmd])
+    setHistoryIndex(-1)
 
     // Process command
     switch (lowerCmd) {
@@ -209,7 +229,7 @@ function App() {
         })
         break
 
-      case 'minecraft':
+      case 'minecraft': {
         newHistory.push({
           id: createId(),
           type: 'output',
@@ -222,7 +242,34 @@ function App() {
             </div>
           )
         })
-        break
+        setHistory(newHistory)
+        setInput('')
+        fetchMinecraftStatus()
+          .then((status) => {
+            const statusText = status.online
+              ? `Players online: ${status.playersOnline ?? 0}${status.playersMax ? `/${status.playersMax}` : ''}`
+              : 'Server is offline.'
+            setHistory((prev) => [
+              ...prev,
+              {
+                id: createId(),
+                type: 'output',
+                content: <span>{statusText}</span>
+              }
+            ])
+          })
+          .catch(() => {
+            setHistory((prev) => [
+              ...prev,
+              {
+                id: createId(),
+                type: 'output',
+                content: <span style={{color: '#e81123'}}>Failed to fetch server status.</span>
+              }
+            ])
+          })
+        return
+      }
 
       case 'projects': {
         const folderFilter = parts[1]?.toLowerCase()
@@ -378,22 +425,30 @@ function App() {
 
     if (event.key === 'Tab') {
       event.preventDefault()
-      const raw = input.trim()
-      if (!raw) return
-      const matches = commands.filter((cmd) => cmd.startsWith(raw.toLowerCase()))
-      if (matches.length === 1) {
-        setInput(matches[0])
+      const rawInput = input
+      const trimmed = rawInput.trim()
+      if (!trimmed) return
+      const parts = trimmed.split(/\s+/)
+      const commandToken = parts[0] ?? ''
+      const canonicalCommand = aliasMap.get(commandToken.toLowerCase()) ?? commandToken.toLowerCase()
+      const hasTrailingSpace = /\s$/.test(rawInput)
+
+      if (canonicalCommand === 'projects') {
+        const arg = hasTrailingSpace ? '' : (parts[1] ?? '')
+        const matches = projectFolders
+          .filter((folder) => folder.toLowerCase().startsWith(arg.toLowerCase()))
+          .sort((a, b) => a.localeCompare(b))
+        if (matches.length > 0) {
+          setInput(`${commandToken} ${matches[0]}`)
+        }
         return
       }
-      if (matches.length > 1) {
-        setHistory((prev) => [
-          ...prev,
-          {
-            id: createId(),
-            type: 'output',
-            content: <span>{matches.join('  ')}</span>
-          }
-        ])
+
+      const matches = commands
+        .filter((cmd) => cmd.startsWith(trimmed.toLowerCase()))
+        .sort((a, b) => a.localeCompare(b))
+      if (matches.length > 0) {
+        setInput(matches[0])
       }
     }
   }
