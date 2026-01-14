@@ -2,7 +2,6 @@
 # Only use built-in command names as canonicals.
 help: help
 user: user, profile
-minecraft: minecraft, mc
 projects: projects, project
 links: links, link
 theme: theme, skin

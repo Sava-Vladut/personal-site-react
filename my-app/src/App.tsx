@@ -5,7 +5,6 @@ import asciiArt from './assets/ascii.txt?raw'
 import linksText from '../links.txt?raw'
 import downloadsText from '../downloads.txt?raw'
 import userText from '../user.txt?raw'
-import minecraftText from '../minecraft.txt?raw'
 import commandsText from '../commands.txt?raw'
 import AsciiWave from './components/AsciiWave'
 import LinkifiedText from './components/LinkifiedText'
@@ -34,11 +33,7 @@ const downloadList = downloadsText
     return { label, url, folder } satisfies DownloadItem
   })
 
-const DEFAULT_COMMANDS = ['help', 'user', 'minecraft', 'projects', 'links', 'theme', 'miner', 'clear']
-const minecraftIp = (() => {
-  const match = minecraftText.match(/SERVER IP:\s*(.+)/i)
-  return match ? match[1].trim() : minecraftText.trim()
-})()
+const DEFAULT_COMMANDS = ['help', 'user', 'projects', 'links', 'theme', 'miner', 'clear']
 
 const parseCommandAliases = (text: string, fallback: string[]) => {
   const aliasMap = new Map<string, string>()
@@ -132,48 +127,6 @@ function App() {
     new Set(downloadList.map((archive) => archive.folder))
   ).sort((a, b) => a.localeCompare(b))
 
-  const handleCopyMinecraftIp = async (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-    if (!minecraftIp) return
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(minecraftIp)
-      } else {
-        const textarea = document.createElement('textarea')
-        textarea.value = minecraftIp
-        textarea.style.position = 'fixed'
-        textarea.style.opacity = '0'
-        document.body.appendChild(textarea)
-        textarea.focus()
-        textarea.select()
-        document.execCommand('copy')
-        document.body.removeChild(textarea)
-      }
-    } catch {
-      setHistory((prev) => [
-        ...prev,
-        {
-          id: createId(),
-          type: 'output',
-          content: <span style={{color: '#e81123'}}>Failed to copy Minecraft IP.</span>
-        }
-      ])
-    }
-  }
-
-  const fetchMinecraftStatus = async () => {
-    const response = await fetch(`https://api.mcsrvstat.us/2/${minecraftIp}`)
-    if (!response.ok) {
-      throw new Error('Status request failed')
-    }
-    const data = await response.json()
-    const online = Boolean(data?.online)
-    const playersOnline = data?.players?.online
-    const playersMax = data?.players?.max
-    const version = typeof data?.version === 'string' ? data.version : ''
-    return { online, playersOnline, playersMax, version }
-  }
-
   const handleCommand = async () => {
     const cmd = input.trim()
     const parts = cmd.split(/\s+/)
@@ -206,7 +159,6 @@ function App() {
             <div>
               <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>minecraft</span> &nbsp;Show Minecraft server info</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
@@ -229,54 +181,6 @@ function App() {
           )
         })
         break
-
-      case 'minecraft': {
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: (
-            <div className="project-item">
-              <span>SERVER IP: {minecraftIp}</span>
-              <a className="download-link" href="#" onClick={handleCopyMinecraftIp}>
-                [COPY]
-              </a>
-            </div>
-          )
-        })
-        setHistory(newHistory)
-        setInput('')
-        fetchMinecraftStatus()
-          .then((status) => {
-            const statusText = status.online
-              ? `Players online: ${status.playersOnline ?? 0}${status.playersMax ? `/${status.playersMax}` : ''}`
-              : 'Server is offline.'
-            const versionText = status.version ? `Version: ${status.version}` : 'Version: unknown'
-            setHistory((prev) => [
-              ...prev,
-              {
-                id: createId(),
-                type: 'output',
-                content: (
-                  <div>
-                    <div>{statusText}</div>
-                    <div>{versionText}</div>
-                  </div>
-                )
-              }
-            ])
-          })
-          .catch(() => {
-            setHistory((prev) => [
-              ...prev,
-              {
-                id: createId(),
-                type: 'output',
-                content: <span style={{color: '#e81123'}}>Failed to fetch server status.</span>
-              }
-            ])
-          })
-        return
-      }
 
       case 'projects': {
         const folderFilter = parts[1]?.toLowerCase()

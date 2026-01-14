@@ -13,7 +13,7 @@ This is a React + TypeScript app built with Vite. Key locations:
 - `commands.txt` maps terminal commands and aliases (for example, `projects` and `project`).
 
 ## Build, Test, and Development Commands
-Run commands from the repository root:
+Run commands from `my-app/`:
 - `npm run dev` starts the Vite dev server with HMR.
 - `npm run build` type-checks with `tsc -b` and produces a production build.
 - `npm run preview` serves the production build locally.
