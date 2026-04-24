@@ -156,6 +156,37 @@
   margin-right: 12px;
 }
 
+.online-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.online-table {
+  width: 100%;
+  min-width: 320px;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.online-table th,
+.online-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.online-table th {
+  color: #4ec9b0;
+  font-weight: bold;
+}
+
+.online-table td:first-child,
+.online-table th:first-child {
+  width: 40px;
+  color: var(--muted);
+}
+
 .download-link {
   color: #d7ba7d;
   text-decoration: none;
