@@ -1,7 +1,9 @@
+import type { PointerEvent } from 'react'
+
 type TerminalHeaderProps = {
   title: string
   icon?: string
-  onDragStart?: (event: React.PointerEvent<HTMLDivElement>) => void
+  onDragStart?: (event: PointerEvent<HTMLDivElement>) => void
   onMinimize: () => void
   onToggleMaximize: () => void
   onClose: () => void

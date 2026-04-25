@@ -3,14 +3,14 @@
 ## Project Structure & Module Organization
 This is a React + TypeScript terminal-style portfolio app built with Vite. Key locations:
 - `src/main.tsx` mounts the app.
-- `src/App.tsx` contains the terminal command engine and most UI state.
-- `src/components/` contains terminal UI components (`TerminalHeader`, `TerminalBody`, `AsciiWave`, `LinkifiedText`).
-- `src/config/` contains shared constants such as command names and themes.
+- `src/App.tsx` orchestrates desktop/window state, command handling, data refreshes, and top-level rendering.
+- `src/components/` contains terminal UI components and extracted window bodies (`TerminalHeader`, `TerminalBody`, `TerminalWindow`, `OnlineAppWindow`, `InstagramAppWindow`, `AsciiWave`, `LinkifiedText`).
+- `src/config/` contains shared constants such as command names, themes, and storage keys.
 - `src/data/` contains content adapters/parsers for root-level text files, such as `downloads.txt`.
-- `src/lib/` contains framework-light helper logic such as command alias parsing and ID generation.
+- `src/lib/` contains framework-light helper logic such as command alias parsing, ID generation, CSV parsing, time formatting, online-log timestamp helpers, and window dragging.
 - `src/styles/` and `src/index.css` contain theme and layout styles.
 - `src/assets/ascii.txt` stores the startup ASCII banner.
-- `src/types/` defines shared TypeScript types.
+- `src/types/` defines shared TypeScript types for terminal history, app API responses, app rows, and window positions.
 - `public/` hosts static files copied as-is at build time; `public/icon.png` is used as the favicon.
 - Root-level content files drive terminal output and behavior:
   - `commands.txt` maps command aliases.
@@ -39,6 +39,7 @@ Run commands from the repository root:
 - Keep the `help` command output aligned with implemented commands.
 - Preserve `downloads.txt` format: `Label | URL | Folder` (comments allowed with `#`).
 - Keep content parsing in `src/data/` or `src/lib/` instead of adding new parsing helpers directly to `src/App.tsx`.
+- Keep large window render trees in `src/components/`; `src/App.tsx` should remain focused on orchestration and command behavior.
 - Avoid keeping unused content files, generated logs, or project metadata in `src/` unless the app imports them.
 
 ## Production Deployment

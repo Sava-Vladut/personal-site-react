@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
@@ -6,119 +6,32 @@ import linksText from '../links.txt?raw'
 import userText from '../user.txt?raw'
 import commandsText from '../commands.txt?raw'
 import AsciiWave from './components/AsciiWave'
+import InstagramAppWindow from './components/InstagramAppWindow'
 import LinkifiedText from './components/LinkifiedText'
-import TerminalBody from './components/TerminalBody'
-import TerminalHeader from './components/TerminalHeader'
+import OnlineAppWindow from './components/OnlineAppWindow'
+import TerminalWindow from './components/TerminalWindow'
+import { SYSTEM_APPS_VISIBLE_STORAGE_KEY } from './config/storage'
 import { DEFAULT_COMMANDS, HIDDEN_COMMANDS, THEMES } from './config/terminal'
 import { downloadList, getProjectFolders } from './data/downloads'
 import { parseCommandAliases } from './lib/commandAliases'
+import { parseCsvRow } from './lib/csv'
 import { createId } from './lib/ids'
 import { getAdjustedOnlineTimestamp } from './lib/onlineLog'
+import { getTimePassed } from './lib/timePassed'
+import { startWindowDrag } from './lib/windowDrag'
+import type {
+  InstagramLogRow,
+  InstagramTrackerResponse,
+  InstagramTrackerState,
+  OnlineLogResponse,
+  OnlineRemoveResponse,
+  OnlineRemoveTarget,
+  OnlineTableResponse,
+  WindowPosition,
+} from './types/apps'
 import type { HistoryItem } from './types/terminal'
 
-type OnlineLogResponse = {
-  ok: boolean
-  error?: string
-}
-
-type OnlineTableResponse = {
-  ok: boolean
-  rows?: string[]
-  error?: string
-}
-
-type OnlineRemoveResponse = {
-  ok: boolean
-  removed?: string
-  error?: string
-}
-
-type InstagramTrackerResponse = {
-  ok: boolean
-  users?: string[]
-  rows?: string[]
-  state?: InstagramTrackerState
-  csvPath?: string
-  usersPath?: string
-  error?: string
-}
-
-type InstagramTrackerState = Record<string, {
-  followers?: number
-  following?: number
-  lastChecked?: string
-  lastChanged?: string
-}>
-
 const ONLINE_TABLE_PAGE_SIZE = 10
-const WINDOW_EDGE_PADDING = 12
-const SYSTEM_APPS_VISIBLE_STORAGE_KEY = 'grimOS.systemAppsVisible'
-
-type WindowPosition = {
-  x: number
-  y: number
-}
-
-const getTimePassed = (timestamp: string) => {
-  const normalizedTimestamp = timestamp.replace(' ', 'T')
-  const timestampMs = new Date(normalizedTimestamp).getTime()
-
-  if (Number.isNaN(timestampMs)) {
-    return 'Unknown'
-  }
-
-  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestampMs) / 1000))
-  const days = Math.floor(elapsedSeconds / 86_400)
-  const hours = Math.floor((elapsedSeconds % 86_400) / 3_600)
-  const minutes = Math.floor((elapsedSeconds % 3_600) / 60)
-
-  if (days > 0) {
-    return `${days}d ${hours}h`
-  }
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-
-  if (minutes > 0) {
-    return `${minutes}m`
-  }
-
-  return 'Just now'
-}
-
-const parseCsvRow = (row: string) => {
-  const values: string[] = []
-  let value = ''
-  let quoted = false
-
-  for (let index = 0; index < row.length; index += 1) {
-    const char = row[index]
-    const nextChar = row[index + 1]
-
-    if (char === '"' && quoted && nextChar === '"') {
-      value += '"'
-      index += 1
-      continue
-    }
-
-    if (char === '"') {
-      quoted = !quoted
-      continue
-    }
-
-    if (char === ',' && !quoted) {
-      values.push(value)
-      value = ''
-      continue
-    }
-
-    value += char
-  }
-
-  values.push(value)
-  return values
-}
 
 function App() {
   const [input, setInput] = useState('')
@@ -142,10 +55,7 @@ function App() {
   const [onlineDuration, setOnlineDuration] = useState('')
   const [onlineMessage, setOnlineMessage] = useState('')
   const [onlineLoading, setOnlineLoading] = useState(false)
-  const [onlineRemoveTarget, setOnlineRemoveTarget] = useState<{
-    index: number
-    timestamp: string
-  } | null>(null)
+  const [onlineRemoveTarget, setOnlineRemoveTarget] = useState<OnlineRemoveTarget | null>(null)
   const [systemAppsVisible, setSystemAppsVisible] = useState(() => (
     window.localStorage.getItem(SYSTEM_APPS_VISIBLE_STORAGE_KEY) === 'true'
   ))
@@ -156,13 +66,13 @@ function App() {
     {
       id: 'banner',
       type: 'output',
-      content: <AsciiWave text={asciiArt} />
+      content: <AsciiWave text={asciiArt} />,
     },
     {
       id: 'init',
       type: 'output',
-      content: <span>Type <span style={{color: '#ce9178'}}>'help'</span> to view available commands.</span>
-    }
+      content: <span>Type <span style={{color: '#ce9178'}}>'help'</span> to view available commands.</span>,
+    },
   ])
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -192,17 +102,9 @@ function App() {
     setOnlineRows(data.rows ?? [])
   }, [])
 
-  const openOnlineApp = () => {
-    setOnlineOpen(true)
-  }
-
   const closeOnlineApp = () => {
     setOnlineOpen(false)
     setOnlineMaximized(false)
-  }
-
-  const openInstagramApp = () => {
-    setInstagramOpen(true)
   }
 
   const closeInstagramApp = () => {
@@ -327,7 +229,6 @@ function App() {
     }
   }
 
-  // Auto-focus input on click anywhere
   const focusInput = () => {
     if (!terminalOpen) return
     const selection = window.getSelection?.()
@@ -335,72 +236,6 @@ function App() {
     inputRef.current?.focus()
   }
 
-  const startWindowDrag = (
-    event: PointerEvent<HTMLDivElement>,
-    windowElement: HTMLDivElement | null,
-    setPosition: React.Dispatch<React.SetStateAction<WindowPosition | null>>,
-    isMaximized: boolean,
-  ) => {
-    if (isMaximized || !windowElement || event.button !== 0) return
-    if ((event.target as HTMLElement).closest('button')) return
-
-    const rect = windowElement.getBoundingClientRect()
-    const offsetX = event.clientX - rect.left
-    const offsetY = event.clientY - rect.top
-    const maxX = window.innerWidth - rect.width
-    const maxY = window.innerHeight - WINDOW_EDGE_PADDING - rect.height
-    const dragHandle = event.currentTarget
-    let animationFrame = 0
-    let currentPosition = {
-      x: Math.min(Math.max(rect.left, 0), Math.max(0, maxX)),
-      y: Math.min(Math.max(rect.top, 0), Math.max(0, maxY)),
-    }
-
-    const applyPosition = () => {
-      animationFrame = 0
-      windowElement.style.left = `${currentPosition.x}px`
-      windowElement.style.top = `${currentPosition.y}px`
-    }
-
-    dragHandle.setPointerCapture(event.pointerId)
-    setPosition(currentPosition)
-    applyPosition()
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const nextX = moveEvent.clientX - offsetX
-      const nextY = moveEvent.clientY - offsetY
-
-      currentPosition = {
-        x: Math.min(Math.max(nextX, 0), Math.max(0, maxX)),
-        y: Math.min(Math.max(nextY, 0), Math.max(0, maxY)),
-      }
-
-      if (!animationFrame) {
-        animationFrame = window.requestAnimationFrame(applyPosition)
-      }
-    }
-
-    const stopDrag = () => {
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame)
-        applyPosition()
-      }
-
-      setPosition(currentPosition)
-      if (dragHandle.hasPointerCapture(event.pointerId)) {
-        dragHandle.releasePointerCapture(event.pointerId)
-      }
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', stopDrag)
-      window.removeEventListener('pointercancel', stopDrag)
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', stopDrag)
-    window.addEventListener('pointercancel', stopDrag)
-  }
-
-  // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
@@ -425,7 +260,7 @@ function App() {
   const normalizedOnlinePage = Math.min(onlinePage, onlinePageCount)
   const onlinePageStart = (normalizedOnlinePage - 1) * ONLINE_TABLE_PAGE_SIZE
   const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
-  const instagramLogRows = instagramRows
+  const instagramLogRows: InstagramLogRow[] = instagramRows
     .map((row) => {
       const [loggedAt = '', username = '', followers = '', following = '', status = '', error = ''] = parseCsvRow(row)
       return { loggedAt, username, followers, following, status, error }
@@ -452,11 +287,10 @@ function App() {
     const rawCmd = parts[0]?.toLowerCase() ?? ''
     const lowerCmd = aliasMap.get(rawCmd) ?? rawCmd
 
-    // Add command to history
     const newHistory = [...history, {
       id: createId(),
       type: 'command',
-      content: cmd
+      content: cmd,
     } as HistoryItem]
 
     if (!cmd) {
@@ -468,7 +302,6 @@ function App() {
     setCommandHistory((prev) => [...prev, cmd])
     setHistoryIndex(-1)
 
-    // Process command
     switch (lowerCmd) {
       case 'help':
         newHistory.push({
@@ -484,7 +317,7 @@ function App() {
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
-          )
+          ),
         })
         break
 
@@ -496,7 +329,7 @@ function App() {
             <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
               {userText}
             </div>
-          )
+          ),
         })
         break
 
@@ -511,12 +344,12 @@ function App() {
                 <div>Usage: <span style={{color: '#ce9178'}}>projects</span> &lt;folder&gt;</div>
                 <div>Available folders: {projectFolders.join(', ')}</div>
               </div>
-            )
+            ),
           })
           break
         }
         const filteredDownloads = downloadList.filter(
-          (archive) => archive.folder.toLowerCase() === folderFilter
+          (archive) => archive.folder.toLowerCase() === folderFilter,
         )
         newHistory.push({
           id: createId(),
@@ -541,7 +374,7 @@ function App() {
                 ))
               )}
             </div>
-          )
+          ),
         })
         break
       }
@@ -803,7 +636,7 @@ function App() {
         newHistory.push({
           id: createId(),
           type: 'output',
-          content: <span style={{color: '#e81123'}}>Command not found: {cmd}</span>
+          content: <span style={{color: '#e81123'}}>Command not found: {cmd}</span>,
         })
     }
 
@@ -811,7 +644,7 @@ function App() {
     setInput('')
   }
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       handleCommand()
       return
@@ -895,12 +728,12 @@ function App() {
 
         {systemAppsVisible && (
           <>
-            <button className="desktop-icon" type="button" onDoubleClick={openOnlineApp} onClick={openOnlineApp}>
+            <button className="desktop-icon" type="button" onDoubleClick={() => setOnlineOpen(true)} onClick={() => setOnlineOpen(true)}>
               <span className="desktop-icon-glyph online-icon-glyph" aria-hidden="true">●</span>
               <span>Online</span>
             </button>
 
-            <button className="desktop-icon" type="button" onDoubleClick={openInstagramApp} onClick={openInstagramApp}>
+            <button className="desktop-icon" type="button" onDoubleClick={() => setInstagramOpen(true)} onClick={() => setInstagramOpen(true)}>
               <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
               <span>Instagram</span>
             </button>
@@ -908,247 +741,78 @@ function App() {
         )}
 
         {terminalOpen && (
-          <div
-            ref={terminalWindowRef}
-            className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''} ${terminalPosition ? 'drag-positioned' : ''}`}
-            style={terminalPosition && !maximized ? { left: terminalPosition.x, top: terminalPosition.y } : undefined}
+          <TerminalWindow
+            windowRef={terminalWindowRef}
+            inputRef={inputRef}
+            bottomRef={bottomRef}
+            maximized={maximized}
+            position={terminalPosition}
+            theme={theme}
+            history={history}
+            input={input}
             onClick={focusInput}
-          >
-            <TerminalHeader
-              title="grim@portofolio: ~"
-              onDragStart={(event) => startWindowDrag(event, terminalWindowRef.current, setTerminalPosition, maximized)}
-              onMinimize={() => setTerminalOpen(false)}
-              onToggleMaximize={() => setMaximized(!maximized)}
-              onClose={closeTerminal}
-            />
-            <TerminalBody
-              history={history}
-              input={input}
-              inputRef={inputRef}
-              bottomRef={bottomRef}
-              onInputChange={(value) => {
-                setInput(value)
-                setHistoryIndex(-1)
-              }}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+            onDragStart={(event) => startWindowDrag(event, terminalWindowRef.current, setTerminalPosition, maximized)}
+            onMinimize={() => setTerminalOpen(false)}
+            onToggleMaximize={() => setMaximized(!maximized)}
+            onClose={closeTerminal}
+            onInputChange={(value) => {
+              setInput(value)
+              setHistoryIndex(-1)
+            }}
+            onKeyDown={handleKeyDown}
+          />
         )}
 
         {onlineOpen && (
-          <div
-            ref={onlineWindowRef}
-            className={`app-window online-app-window ${onlineMaximized ? 'maximized' : ''} ${onlinePosition ? 'drag-positioned' : ''}`}
-            style={onlinePosition && !onlineMaximized ? { left: onlinePosition.x, top: onlinePosition.y } : undefined}
-          >
-            <TerminalHeader
-              title="online log"
-              icon="●"
-              onDragStart={(event) => startWindowDrag(event, onlineWindowRef.current, setOnlinePosition, onlineMaximized)}
-              onMinimize={() => setOnlineOpen(false)}
-              onToggleMaximize={() => setOnlineMaximized(!onlineMaximized)}
-              onClose={closeOnlineApp}
-            />
-
-            <div className="online-app-body">
-              <form className="online-app-form" onSubmit={handleOnlineAdd}>
-                <label className="online-app-label" htmlFor="online-duration">Command</label>
-                <input
-                  id="online-duration"
-                  className="online-app-input"
-                  type="text"
-                  value={onlineDuration}
-                  onChange={(event) => setOnlineDuration(event.target.value)}
-                  placeholder="online 15m, 15m, 5h"
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-                <button className="online-app-button primary" type="submit" disabled={onlineLoading}>
-                  Add
-                </button>
-                <button className="online-app-button" type="button" onClick={handleOnlineRefresh} disabled={onlineLoading}>
-                  Refresh
-                </button>
-              </form>
-
-              {onlineMessage && (
-                <div className="online-app-message">{onlineMessage}</div>
-              )}
-
-              <div className="online-app-table-wrap">
-                {onlineRows.length === 0 ? (
-                  <div className="online-app-empty">
-                    {onlineLoading ? 'Loading online log...' : 'No online log entries found.'}
-                  </div>
-                ) : (
-                  <div className="online-table online-app-table">
-                    <div className="online-table-row online-table-header">
-                      <span>#</span>
-                      <span>Timestamp</span>
-                      <span>Time passed</span>
-                      <span>Action</span>
-                    </div>
-                    {onlinePageRows.map((timestamp, index) => (
-                      <div className="online-table-row" key={`${timestamp}-${onlinePageStart + index}`}>
-                        <span>{onlinePageStart + index + 1}</span>
-                        <span>{timestamp}</span>
-                        <span>{getTimePassed(timestamp)}</span>
-                        <span>
-                          <button
-                            className="online-app-link-button danger"
-                            type="button"
-                            disabled={onlineLoading}
-                            onClick={() => setOnlineRemoveTarget({
-                              index: onlinePageStart + index + 1,
-                              timestamp,
-                            })}
-                          >
-                            Remove
-                          </button>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="online-app-pagination">
-                <button
-                  className="online-app-button"
-                  type="button"
-                  onClick={() => setOnlinePage((page) => Math.max(1, page - 1))}
-                  disabled={onlineLoading || normalizedOnlinePage === 1}
-                >
-                  Prev
-                </button>
-                <span>Page {normalizedOnlinePage} of {onlinePageCount} ({onlineRows.length})</span>
-                <button
-                  className="online-app-button"
-                  type="button"
-                  onClick={() => setOnlinePage((page) => Math.min(onlinePageCount, page + 1))}
-                  disabled={onlineLoading || normalizedOnlinePage === onlinePageCount}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-
-            {onlineRemoveTarget && (
-              <div className="online-modal-backdrop" role="presentation">
-                <div className="online-modal" role="dialog" aria-modal="true" aria-labelledby="online-remove-title">
-                  <div id="online-remove-title" className="online-modal-title">Remove entry?</div>
-                  <div className="online-modal-body">
-                    Entry {onlineRemoveTarget.index}: {onlineRemoveTarget.timestamp}
-                  </div>
-                  <div className="online-modal-actions">
-                    <button
-                      className="online-app-button"
-                      type="button"
-                      disabled={onlineLoading}
-                      onClick={() => setOnlineRemoveTarget(null)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="online-app-button danger"
-                      type="button"
-                      disabled={onlineLoading}
-                      onClick={handleOnlineRemove}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <OnlineAppWindow
+            windowRef={onlineWindowRef}
+            maximized={onlineMaximized}
+            position={onlinePosition}
+            rows={onlineRows}
+            pageRows={onlinePageRows}
+            pageStart={onlinePageStart}
+            normalizedPage={normalizedOnlinePage}
+            pageCount={onlinePageCount}
+            duration={onlineDuration}
+            message={onlineMessage}
+            loading={onlineLoading}
+            removeTarget={onlineRemoveTarget}
+            onDragStart={(event) => startWindowDrag(event, onlineWindowRef.current, setOnlinePosition, onlineMaximized)}
+            onMinimize={() => setOnlineOpen(false)}
+            onToggleMaximize={() => setOnlineMaximized(!onlineMaximized)}
+            onClose={closeOnlineApp}
+            onSubmit={handleOnlineAdd}
+            onDurationChange={setOnlineDuration}
+            onRefresh={handleOnlineRefresh}
+            onPageChange={(updater) => setOnlinePage(updater)}
+            onRemoveTargetChange={setOnlineRemoveTarget}
+            onRemove={handleOnlineRemove}
+          />
         )}
 
         {instagramOpen && (
-          <div
-            ref={instagramWindowRef}
-            className={`app-window instagram-app-window ${instagramMaximized ? 'maximized' : ''} ${instagramPosition ? 'drag-positioned' : ''}`}
-            style={instagramPosition && !instagramMaximized ? { left: instagramPosition.x, top: instagramPosition.y } : undefined}
-          >
-            <TerminalHeader
-              title="instagram tracker"
-              icon="IG"
-              onDragStart={(event) => startWindowDrag(event, instagramWindowRef.current, setInstagramPosition, instagramMaximized)}
-              onMinimize={() => setInstagramOpen(false)}
-              onToggleMaximize={() => setInstagramMaximized(!instagramMaximized)}
-              onClose={closeInstagramApp}
-            />
-
-            <div className="instagram-app-body">
-              <div className="instagram-app-toolbar">
-                <div>
-                  <div className="instagram-app-title">Followers / Following</div>
-                  <div className="instagram-app-subtitle">
-                    {instagramUsers.length} watched user{instagramUsers.length === 1 ? '' : 's'} · last checked {instagramLastChecked ?? 'never'}
-                  </div>
-                </div>
-                <input
-                  className="instagram-filter-input"
-                  type="search"
-                  value={instagramFilter}
-                  onChange={(event) => setInstagramFilter(event.target.value)}
-                  placeholder="filter user"
-                  autoComplete="off"
-                  spellCheck="false"
-                />
-                <button
-                  className="online-app-button primary"
-                  type="button"
-                  disabled={instagramLoading}
-                  onClick={() => refreshInstagramRows('POST')}
-                >
-                  Refresh now
-                </button>
-              </div>
-
-              {instagramMessage && (
-                <div className="online-app-message">{instagramMessage}</div>
-              )}
-
-              <div className="instagram-user-list">
-                {instagramUsers.length === 0 ? (
-                  <span>Add usernames to instagram-users.txt.</span>
-                ) : visibleInstagramUsers.length === 0 ? (
-                  <span>No users match filter.</span>
-                ) : (
-                  visibleInstagramUsers.map((user) => <span key={user}>@{user}</span>)
-                )}
-              </div>
-
-              <div className="online-app-table-wrap instagram-table-wrap">
-                {instagramLogRows.length === 0 ? (
-                  <div className="online-app-empty">
-                    {instagramLoading ? 'Loading Instagram counts...' : 'No Instagram rows logged yet.'}
-                  </div>
-                ) : (
-                  <div className="instagram-table">
-                    <div className="instagram-table-row instagram-table-header">
-                      <span>Timestamp</span>
-                      <span>User</span>
-                      <span>Followers</span>
-                      <span>Following</span>
-                    </div>
-                    {instagramLogRows.map((row, index) => (
-                      <div className="instagram-table-row" key={`${row.loggedAt}-${row.username}-${index}`}>
-                        <span>{row.loggedAt}</span>
-                        <span>@{row.username}</span>
-                        <span>{row.followers || '-'}</span>
-                        <span>{row.following || '-'}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <InstagramAppWindow
+            windowRef={instagramWindowRef}
+            maximized={instagramMaximized}
+            position={instagramPosition}
+            users={instagramUsers}
+            visibleUsers={visibleInstagramUsers}
+            rows={instagramLogRows}
+            filter={instagramFilter}
+            message={instagramMessage}
+            loading={instagramLoading}
+            lastChecked={instagramLastChecked}
+            onDragStart={(event) => startWindowDrag(event, instagramWindowRef.current, setInstagramPosition, instagramMaximized)}
+            onMinimize={() => setInstagramOpen(false)}
+            onToggleMaximize={() => setInstagramMaximized(!instagramMaximized)}
+            onClose={closeInstagramApp}
+            onFilterChange={setInstagramFilter}
+            onRefresh={() => refreshInstagramRows('POST')}
+          />
         )}
       </main>
     </div>
   )
 }
+
 export default App
