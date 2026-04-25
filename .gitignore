@@ -1,6 +1,24 @@
-my-app/src/projects/grims-games/Grims Games/Gabor Rooms 1.1.rar
-my-app/src/projects/grims-games/Grims Games/Gaborpunk 0.1.rar
-my-app/src/projects/grims-games/Grims Games/Gaborpunk 0.2.rar
-my-app/src/projects/grims-games/Grims Games/Gaborpunk Alpha.rar
-my-app/src/projects/grims-games/Grims Games/Gaborson 0.1 (Gaborpunk 0.3).rar
-my-app/src/projects/grims-games/Grims Games/The Binding Of Gabor 0.1.rar
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
