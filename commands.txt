@@ -5,6 +5,7 @@ user: user, profile
 projects: projects, project
 links: links, link
 theme: theme, skin
+grim: grim
 online: online
 table: table
 clear: clear, cls

@@ -83,63 +83,12 @@
   background: #141414;
 }
 
-.desktop-taskbar {
-  height: 52px;
-  padding: 6px 14px;
-  background: #11110f;
-  border-top: 1px solid #56513f;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  position: relative;
-  z-index: 3;
-}
-
-.taskbar-app {
-  width: 40px;
-  height: 40px;
-  background: #171713;
-  border: 1px solid #383426;
-  border-radius: 0;
-  color: #8fd19e;
-  display: grid;
-  place-items: center;
-  font-family: 'Courier New', Courier, monospace;
-  font-weight: 700;
-}
-
-.taskbar-app:hover,
-.taskbar-app:focus-visible,
-.taskbar-app.active {
-  background: #242217;
-  border-color: #ded7bd;
-  outline: none;
-}
-
-.online-taskbar-app {
-  color: #ded7bd;
-}
-
-.instagram-taskbar-app {
-  color: #f1f1e6;
-}
-
-.taskbar-spacer {
-  flex: 1;
-}
-
-.taskbar-clock {
-  color: #9a957f;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.8rem;
-}
-
 .terminal-window {
   width: 1080px;
   height: 720px;
   max-width: 95vw;
-  max-height: calc(100vh - 86px);
-  max-height: calc(100dvh - 86px);
+  max-height: calc(100vh - 34px);
+  max-height: calc(100dvh - 34px);
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 0;
@@ -165,8 +114,8 @@
   width: 720px;
   height: 520px;
   max-width: 90vw;
-  max-height: calc(100vh - 86px);
-  max-height: calc(100dvh - 86px);
+  max-height: calc(100vh - 34px);
+  max-height: calc(100dvh - 34px);
   background: #11110f;
   border: 1px solid #56513f;
   border-radius: 0;
@@ -192,11 +141,11 @@
 
 .app-window.maximized {
   width: 100vw;
-  height: calc(100vh - 52px);
-  height: calc(100dvh - 52px);
+  height: 100vh;
+  height: 100dvh;
   max-width: 100vw;
-  max-height: calc(100vh - 52px);
-  max-height: calc(100dvh - 52px);
+  max-height: 100vh;
+  max-height: 100dvh;
   border-radius: 0;
   border: none;
   inset: 0 auto auto 0;
@@ -210,6 +159,7 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow: hidden;
 }
 
 .online-app-form {
@@ -445,15 +395,32 @@
   display: flex;
   flex-direction: column;
   background: #11110f;
+  overflow: hidden;
 }
 
 .instagram-app-toolbar {
+  flex-shrink: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) max-content;
   align-items: center;
   gap: 16px;
   padding: 16px 18px 14px;
   border-bottom: 1px solid #56513f;
+}
+
+.instagram-filter-input {
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  background: #171713;
+  border: 1px solid #56513f;
+  color: #f1f1e6;
+  font: inherit;
+  outline: none;
+}
+
+.instagram-filter-input:focus {
+  border-color: #ded7bd;
 }
 
 .instagram-app-title {
@@ -472,9 +439,10 @@
 }
 
 .instagram-user-list {
+  flex-shrink: 0;
   min-height: 42px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 0;
   border-bottom: 1px solid #56513f;
   background: #171713;
@@ -502,7 +470,7 @@
 .instagram-table {
   min-width: 820px;
   display: grid;
-  grid-template-columns: minmax(210px, 1.2fr) minmax(120px, 0.8fr) max-content max-content minmax(80px, 0.5fr);
+  grid-template-columns: minmax(210px, 1.2fr) minmax(120px, 0.8fr) max-content max-content;
   color: #f1f1e6;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.86rem;
@@ -535,11 +503,6 @@
   text-align: right;
 }
 
-.instagram-table-row:not(.instagram-table-header) span:nth-child(5) {
-  color: #8fd19e;
-  text-transform: uppercase;
-}
-
 .instagram-app-window .online-app-message {
   min-height: 0;
   margin: 0;
@@ -558,11 +521,11 @@
 
 .terminal-window.maximized {
   width: 100vw;
-  height: calc(100vh - 52px);
-  height: calc(100dvh - 52px);
+  height: 100vh;
+  height: 100dvh;
   max-width: 100vw;
-  max-height: calc(100vh - 52px);
-  max-height: calc(100dvh - 52px);
+  max-height: 100vh;
+  max-height: 100dvh;
   border-radius: 0;
   border: none;
   inset: 0 auto auto 0;
@@ -632,6 +595,7 @@
   padding: 24px;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   color: var(--text); /* Default text color to grey/white */
   font-size: 1rem;
   cursor: text;
@@ -718,6 +682,8 @@
   font-size: 0.64rem;
   font-family: monospace;
   white-space: pre;
+  max-width: 100%;
+  overflow-x: auto;
   color: #8fd19e;
 }
 
@@ -793,12 +759,22 @@
 }
 
 @media (max-width: 720px) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .desktop-shell {
     background: #171713;
+    height: 100dvh;
+    min-height: 100dvh;
   }
 
   .desktop-surface {
     padding: 14px;
+    overflow: hidden;
   }
 
   .desktop-surface::before {
@@ -818,28 +794,30 @@
 
   .terminal-window {
     width: 100vw;
-    height: calc(100vh - 52px);
-    height: calc(100dvh - 52px);
+    height: 100vh;
+    height: 100dvh;
     max-width: 100vw;
-    max-height: calc(100vh - 52px);
-    max-height: calc(100dvh - 52px);
+    max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
     border: none;
     inset: 0 auto auto 0;
     transform: none;
+    box-shadow: none;
   }
 
   .app-window {
     width: 100vw;
-    height: calc(100vh - 52px);
-    height: calc(100dvh - 52px);
+    height: 100vh;
+    height: 100dvh;
     max-width: 100vw;
-    max-height: calc(100vh - 52px);
-    max-height: calc(100dvh - 52px);
+    max-height: 100vh;
+    max-height: 100dvh;
     border-radius: 0;
     border: none;
     inset: 0 auto auto 0;
     transform: none;
+    box-shadow: none;
   }
 
   .terminal-header {
@@ -868,21 +846,38 @@
     font-size: 0.86rem;
     gap: 8px;
     -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
   }
 
   .online-app-body {
     padding: 14px;
     gap: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .instagram-app-body {
-    padding: 14px;
-    gap: 12px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
   }
 
   .instagram-app-toolbar {
     align-items: stretch;
+    display: flex;
     flex-direction: column;
+    padding: 12px;
+  }
+
+  .instagram-filter-input {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .instagram-user-list {
+    max-height: 104px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .instagram-table {
@@ -909,6 +904,7 @@
   .online-app-table-wrap {
     padding: 12px;
     -webkit-overflow-scrolling: touch;
+    overflow: auto;
   }
 
   .online-app-pagination {
@@ -969,11 +965,6 @@
     grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
   }
 
-  .desktop-taskbar {
-    height: 52px;
-    padding: 6px 10px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 380px) {

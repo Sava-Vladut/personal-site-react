@@ -4,11 +4,12 @@ export const DEFAULT_COMMANDS = [
   'projects',
   'links',
   'theme',
+  'grim',
   'online',
   'table',
   'clear',
 ]
 
-export const HIDDEN_COMMANDS = ['online', 'table']
+export const HIDDEN_COMMANDS = ['grim', 'online', 'table']
 
 export const THEMES = ['matrix', 'amber', 'solar']

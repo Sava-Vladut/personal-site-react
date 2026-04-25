@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { mkdir, readFile, stat, appendFile, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { logAllUsers, readLogRows, readUsers, startInstagramTracker, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
+import { logAllUsers, readLogRows, readTrackerState, readUsers, startInstagramTracker, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, 'dist')
@@ -131,8 +131,8 @@ const handleOnlineLog = async (request, response) => {
 const handleInstagramTracker = async (request, response) => {
   if (request.method === 'GET') {
     try {
-      const [users, rows] = await Promise.all([readUsers(), readLogRows()])
-      sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+      const [users, rows, state] = await Promise.all([readUsers(), readLogRows(), readTrackerState()])
+      sendJson(response, 200, { ok: true, users, rows, state, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to read Instagram tracker data.'
       sendJson(response, 500, { ok: false, error: message })
@@ -143,8 +143,8 @@ const handleInstagramTracker = async (request, response) => {
   if (request.method === 'POST') {
     try {
       await logAllUsers()
-      const [users, rows] = await Promise.all([readUsers(), readLogRows()])
-      sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+      const [users, rows, state] = await Promise.all([readUsers(), readLogRows(), readTrackerState()])
+      sendJson(response, 200, { ok: true, users, rows, state, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to refresh Instagram counts.'
       sendJson(response, 500, { ok: false, error: message })

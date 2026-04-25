@@ -7,6 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = dirname(__dirname)
 export const usersPath = process.env.INSTAGRAM_USERS_PATH || join(rootDir, 'instagram-users.txt')
 export const csvPath = process.env.INSTAGRAM_COUNTS_CSV || join(rootDir, 'data', 'instagram-counts.csv')
+export const statePath = process.env.INSTAGRAM_STATE_PATH || join(rootDir, 'data', 'instagram-state.json')
 const minIntervalMinutes = Number(process.env.INSTAGRAM_MIN_INTERVAL_MINUTES || 30)
 const maxIntervalMinutes = Number(process.env.INSTAGRAM_MAX_INTERVAL_MINUTES || 40)
 const requestDelayMs = Number(process.env.INSTAGRAM_REQUEST_DELAY_MS || 2500)
@@ -16,7 +17,22 @@ const sleep = (ms) => new Promise((resolve) => {
   setTimeout(resolve, ms)
 })
 
-const timestamp = () => new Date().toISOString()
+const timestamp = () => {
+  const date = new Date()
+  const pad = (value) => String(value).padStart(2, '0')
+
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join('-')
+    + ' '
+    + [
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+      pad(date.getSeconds()),
+    ].join(':')
+}
 
 const csvEscape = (value) => {
   const text = String(value ?? '')
@@ -83,6 +99,24 @@ const appendCsvRow = async (row) => {
   await appendFile(csvPath, `${row.map(csvEscape).join(',')}\n`, 'utf8')
 }
 
+const readState = async () => {
+  const contents = await readFile(statePath, 'utf8').catch((error) => {
+    if (error?.code === 'ENOENT') return '{}'
+    throw error
+  })
+
+  try {
+    return JSON.parse(contents)
+  } catch {
+    return {}
+  }
+}
+
+const writeState = async (state) => {
+  await mkdir(dirname(statePath), { recursive: true })
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+}
+
 export const readUsers = async () => {
   const contents = await readFile(usersPath, 'utf8')
   const users = contents
@@ -93,6 +127,8 @@ export const readUsers = async () => {
 
   return [...new Set(users)]
 }
+
+export const readTrackerState = async () => readState()
 
 const getProfileCountsFromApi = async (username) => {
   const response = await getHttpsText(
@@ -165,6 +201,8 @@ export const getProfileCounts = async (username) => {
 }
 
 const logOneUser = async (username) => {
+  const checkedAt = timestamp()
+
   try {
     const counts = await getProfileCounts(username)
 
@@ -172,11 +210,34 @@ const logOneUser = async (username) => {
       throw new Error('Follower or following count was missing')
     }
 
-    await appendCsvRow([timestamp(), username, counts.followers, counts.following, 'ok', ''])
-    console.log(`${username}: ${counts.followers} followers, ${counts.following} following`)
+    const state = await readState()
+    const previous = state[username]
+    const changed = previous?.followers !== counts.followers || previous?.following !== counts.following
+
+    state[username] = {
+      followers: counts.followers,
+      following: counts.following,
+      lastChecked: checkedAt,
+      lastChanged: changed ? checkedAt : previous?.lastChanged,
+    }
+
+    await writeState(state)
+
+    if (changed) {
+      await appendCsvRow([checkedAt, username, counts.followers, counts.following, 'ok', ''])
+      console.log(`${username}: ${counts.followers} followers, ${counts.following} following`)
+      return
+    }
+
+    console.log(`${username}: unchanged (${counts.followers} followers, ${counts.following} following)`)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    await appendCsvRow([timestamp(), username, '', '', 'error', message])
+    const state = await readState()
+    state[username] = {
+      ...state[username],
+      lastChecked: checkedAt,
+    }
+    await writeState(state)
     console.error(`${username}: ${message}`)
   }
 }

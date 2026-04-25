@@ -37,13 +37,22 @@ type InstagramTrackerResponse = {
   ok: boolean
   users?: string[]
   rows?: string[]
+  state?: InstagramTrackerState
   csvPath?: string
   usersPath?: string
   error?: string
 }
 
+type InstagramTrackerState = Record<string, {
+  followers?: number
+  following?: number
+  lastChecked?: string
+  lastChanged?: string
+}>
+
 const ONLINE_TABLE_PAGE_SIZE = 10
-const TASKBAR_HEIGHT = 52
+const WINDOW_EDGE_PADDING = 12
+const SYSTEM_APPS_VISIBLE_STORAGE_KEY = 'grimOS.systemAppsVisible'
 
 type WindowPosition = {
   x: number
@@ -124,6 +133,8 @@ function App() {
   const [instagramPosition, setInstagramPosition] = useState<WindowPosition | null>(null)
   const [instagramUsers, setInstagramUsers] = useState<string[]>([])
   const [instagramRows, setInstagramRows] = useState<string[]>([])
+  const [instagramState, setInstagramState] = useState<InstagramTrackerState>({})
+  const [instagramFilter, setInstagramFilter] = useState('')
   const [instagramMessage, setInstagramMessage] = useState('')
   const [instagramLoading, setInstagramLoading] = useState(false)
   const [onlineRows, setOnlineRows] = useState<string[]>([])
@@ -135,6 +146,9 @@ function App() {
     index: number
     timestamp: string
   } | null>(null)
+  const [systemAppsVisible, setSystemAppsVisible] = useState(() => (
+    window.localStorage.getItem(SYSTEM_APPS_VISIBLE_STORAGE_KEY) === 'true'
+  ))
   const [theme, setTheme] = useState('matrix')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -224,6 +238,7 @@ function App() {
 
       setInstagramUsers(data.users ?? [])
       setInstagramRows(data.rows ?? [])
+      setInstagramState(data.state ?? {})
       setInstagramMessage(method === 'POST' ? 'Refresh complete.' : '')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to read Instagram tracker.'
@@ -333,7 +348,7 @@ function App() {
     const offsetX = event.clientX - rect.left
     const offsetY = event.clientY - rect.top
     const maxX = window.innerWidth - rect.width
-    const maxY = window.innerHeight - TASKBAR_HEIGHT - rect.height
+    const maxY = window.innerHeight - WINDOW_EDGE_PADDING - rect.height
     const dragHandle = event.currentTarget
     let animationFrame = 0
     let currentPosition = {
@@ -410,10 +425,23 @@ function App() {
   const normalizedOnlinePage = Math.min(onlinePage, onlinePageCount)
   const onlinePageStart = (normalizedOnlinePage - 1) * ONLINE_TABLE_PAGE_SIZE
   const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
-  const instagramLogRows = instagramRows.slice(-30).reverse().map((row) => {
-    const [loggedAt = '', username = '', followers = '', following = '', status = '', error = ''] = parseCsvRow(row)
-    return { loggedAt, username, followers, following, status, error }
-  })
+  const instagramLogRows = instagramRows
+    .map((row) => {
+      const [loggedAt = '', username = '', followers = '', following = '', status = '', error = ''] = parseCsvRow(row)
+      return { loggedAt, username, followers, following, status, error }
+    })
+    .filter((row) => row.status !== 'error')
+    .filter((row) => row.username.toLowerCase().includes(instagramFilter.trim().toLowerCase()))
+    .slice(-30)
+    .reverse()
+  const visibleInstagramUsers = instagramUsers.filter((user) => (
+    user.toLowerCase().includes(instagramFilter.trim().toLowerCase())
+  ))
+  const instagramLastChecked = instagramUsers
+    .map((user) => instagramState[user]?.lastChecked)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1)
 
   const { aliasMap, commands } = parseCommandAliases(commandsText, DEFAULT_COMMANDS)
   const projectFolders = getProjectFolders()
@@ -562,6 +590,16 @@ function App() {
         })
         break
       }
+
+      case 'grim':
+        setSystemAppsVisible(true)
+        window.localStorage.setItem(SYSTEM_APPS_VISIBLE_STORAGE_KEY, 'true')
+        newHistory.push({
+          id: createId(),
+          type: 'output',
+          content: <span style={{color: '#4ec9b0'}}>System apps unlocked.</span>,
+        })
+        break
 
       case 'online': {
         if (parts.length > 2) {
@@ -855,15 +893,19 @@ function App() {
           <span>Terminal</span>
         </button>
 
-        <button className="desktop-icon" type="button" onDoubleClick={openOnlineApp} onClick={openOnlineApp}>
-          <span className="desktop-icon-glyph online-icon-glyph" aria-hidden="true">●</span>
-          <span>Online</span>
-        </button>
+        {systemAppsVisible && (
+          <>
+            <button className="desktop-icon" type="button" onDoubleClick={openOnlineApp} onClick={openOnlineApp}>
+              <span className="desktop-icon-glyph online-icon-glyph" aria-hidden="true">●</span>
+              <span>Online</span>
+            </button>
 
-        <button className="desktop-icon" type="button" onDoubleClick={openInstagramApp} onClick={openInstagramApp}>
-          <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
-          <span>Instagram</span>
-        </button>
+            <button className="desktop-icon" type="button" onDoubleClick={openInstagramApp} onClick={openInstagramApp}>
+              <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
+              <span>Instagram</span>
+            </button>
+          </>
+        )}
 
         {terminalOpen && (
           <div
@@ -1042,9 +1084,18 @@ function App() {
                 <div>
                   <div className="instagram-app-title">Followers / Following</div>
                   <div className="instagram-app-subtitle">
-                    {instagramUsers.length} watched user{instagramUsers.length === 1 ? '' : 's'} · checks every 30-40 minutes
+                    {instagramUsers.length} watched user{instagramUsers.length === 1 ? '' : 's'} · last checked {instagramLastChecked ?? 'never'}
                   </div>
                 </div>
+                <input
+                  className="instagram-filter-input"
+                  type="search"
+                  value={instagramFilter}
+                  onChange={(event) => setInstagramFilter(event.target.value)}
+                  placeholder="filter user"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
                 <button
                   className="online-app-button primary"
                   type="button"
@@ -1062,8 +1113,10 @@ function App() {
               <div className="instagram-user-list">
                 {instagramUsers.length === 0 ? (
                   <span>Add usernames to instagram-users.txt.</span>
+                ) : visibleInstagramUsers.length === 0 ? (
+                  <span>No users match filter.</span>
                 ) : (
-                  instagramUsers.map((user) => <span key={user}>@{user}</span>)
+                  visibleInstagramUsers.map((user) => <span key={user}>@{user}</span>)
                 )}
               </div>
 
@@ -1079,7 +1132,6 @@ function App() {
                       <span>User</span>
                       <span>Followers</span>
                       <span>Following</span>
-                      <span>Status</span>
                     </div>
                     {instagramLogRows.map((row, index) => (
                       <div className="instagram-table-row" key={`${row.loggedAt}-${row.username}-${index}`}>
@@ -1087,7 +1139,6 @@ function App() {
                         <span>@{row.username}</span>
                         <span>{row.followers || '-'}</span>
                         <span>{row.following || '-'}</span>
-                        <span title={row.error}>{row.status}</span>
                       </div>
                     ))}
                   </div>
@@ -1097,35 +1148,6 @@ function App() {
           </div>
         )}
       </main>
-
-      <footer className="desktop-taskbar">
-        <button
-          className={`taskbar-app ${terminalOpen ? 'active' : ''}`}
-          type="button"
-          aria-label="Terminal"
-          onClick={openTerminal}
-        >
-          <span className="taskbar-icon" aria-hidden="true">_&gt;</span>
-        </button>
-        <button
-          className={`taskbar-app online-taskbar-app ${onlineOpen ? 'active' : ''}`}
-          type="button"
-          aria-label="Online"
-          onClick={openOnlineApp}
-        >
-          <span className="taskbar-icon" aria-hidden="true">●</span>
-        </button>
-        <button
-          className={`taskbar-app instagram-taskbar-app ${instagramOpen ? 'active' : ''}`}
-          type="button"
-          aria-label="Instagram"
-          onClick={openInstagramApp}
-        >
-          <span className="taskbar-icon" aria-hidden="true">IG</span>
-        </button>
-        <div className="taskbar-spacer" />
-        <div className="taskbar-clock">grimOS</div>
-      </footer>
     </div>
   )
 }
