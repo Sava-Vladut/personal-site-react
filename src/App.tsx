@@ -9,7 +9,7 @@ import AsciiWave from './components/AsciiWave'
 import LinkifiedText from './components/LinkifiedText'
 import TerminalBody from './components/TerminalBody'
 import TerminalHeader from './components/TerminalHeader'
-import { DEFAULT_COMMANDS, THEMES } from './config/terminal'
+import { DEFAULT_COMMANDS, HIDDEN_COMMANDS, THEMES } from './config/terminal'
 import { downloadList, getProjectFolders } from './data/downloads'
 import { parseCommandAliases } from './lib/commandAliases'
 import { createId } from './lib/ids'
@@ -32,6 +32,8 @@ type OnlineRemoveResponse = {
   removed?: string
   error?: string
 }
+
+const ONLINE_TABLE_PAGE_SIZE = 10
 
 function App() {
   const [input, setInput] = useState('')
@@ -105,8 +107,6 @@ function App() {
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>online</span> &nbsp;&lt;duration&gt; Log adjusted online time</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show or remove online log entries</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
@@ -269,13 +269,25 @@ function App() {
 
       case 'table': {
         const tableAction = parts[1]?.toLowerCase()
+        const isPageShortcut = Boolean(tableAction && /^\d+$/.test(tableAction))
 
-        if (parts.length === 1 || tableAction === 'index') {
-          if (parts.length > 2) {
+        if (parts.length === 1 || tableAction === 'index' || isPageShortcut) {
+          if ((tableAction === 'index' && parts.length > 3) || (isPageShortcut && parts.length > 2)) {
             newHistory.push({
               id: createId(),
               type: 'output',
-              content: <span style={{color: '#e81123'}}>Usage: table index</span>,
+              content: <span style={{color: '#e81123'}}>Usage: table index [page]</span>,
+            })
+            break
+          }
+
+          const pageToken = tableAction === 'index' ? parts[2] : parts[1]
+          const page = pageToken ? Number(pageToken) : 1
+          if (!Number.isSafeInteger(page) || page < 1) {
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Page must be a positive number.</span>,
             })
             break
           }
@@ -289,6 +301,10 @@ function App() {
             }
 
             const rows = data.rows ?? []
+            const pageCount = Math.max(1, Math.ceil(rows.length / ONLINE_TABLE_PAGE_SIZE))
+            const normalizedPage = Math.min(page, pageCount)
+            const pageStart = (normalizedPage - 1) * ONLINE_TABLE_PAGE_SIZE
+            const pageRows = rows.slice(pageStart, pageStart + ONLINE_TABLE_PAGE_SIZE)
             newHistory.push({
               id: createId(),
               type: 'output',
@@ -300,12 +316,16 @@ function App() {
                     <span>#</span>
                     <span>Timestamp</span>
                   </div>
-                  {rows.map((timestamp, index) => (
+                  {pageRows.map((timestamp, index) => (
                     <div className="online-table-row" key={`${timestamp}-${index}`}>
-                      <span>{index + 1}</span>
+                      <span>{pageStart + index + 1}</span>
                       <span>{timestamp}</span>
                     </div>
                   ))}
+                  <div className="online-table-pagination">
+                    Page {normalizedPage} of {pageCount} ({rows.length} entries)
+                    {page > pageCount ? `, showing last page` : ''}
+                  </div>
                 </div>
               ),
             })
@@ -374,7 +394,7 @@ function App() {
           newHistory.push({
             id: createId(),
             type: 'output',
-            content: <span style={{color: '#e81123'}}>Usage: table index | table remove &lt;index&gt;</span>,
+            content: <span style={{color: '#e81123'}}>Usage: table [page] | table index [page] | table remove &lt;index&gt;</span>,
           })
           break
         }
@@ -463,6 +483,7 @@ function App() {
       }
 
       const matches = commands
+        .filter((cmd) => !HIDDEN_COMMANDS.includes(aliasMap.get(cmd) ?? cmd))
         .filter((cmd) => cmd.startsWith(trimmed.toLowerCase()))
         .sort((a, b) => a.localeCompare(b))
       if (matches.length > 0) {

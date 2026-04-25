@@ -9,4 +9,6 @@ export const DEFAULT_COMMANDS = [
   'clear',
 ]
 
+export const HIDDEN_COMMANDS = ['online', 'table']
+
 export const THEMES = ['matrix', 'amber', 'solar']
