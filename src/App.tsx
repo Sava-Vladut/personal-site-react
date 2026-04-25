@@ -16,6 +16,8 @@ import { createId } from './lib/ids'
 import { getAdjustedOnlineTimestamp } from './lib/onlineLog'
 import type { HistoryItem } from './types/terminal'
 
+const onlineLogTokenKey = 'personal-site-online-log-token'
+
 type OnlineLogResponse = {
   ok: boolean
   error?: string
@@ -31,6 +33,31 @@ type OnlineRemoveResponse = {
   ok: boolean
   removed?: string
   error?: string
+}
+
+const getOnlineLogToken = () => {
+  const cachedToken = sessionStorage.getItem(onlineLogTokenKey)
+  if (cachedToken) return cachedToken
+
+  const token = window.prompt('Online log token')
+  if (!token) return null
+
+  sessionStorage.setItem(onlineLogTokenKey, token)
+  return token
+}
+
+const getOnlineMutationHeaders = () => {
+  const token = getOnlineLogToken()
+  if (!token) return null
+
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  }
+}
+
+const forgetOnlineLogToken = () => {
+  sessionStorage.removeItem(onlineLogTokenKey)
 }
 
 function App() {
@@ -75,17 +102,22 @@ function App() {
     const parts = cmd.split(/\s+/)
     const rawCmd = parts[0]?.toLowerCase() ?? ''
     const lowerCmd = aliasMap.get(rawCmd) ?? rawCmd
+    const appendOutput = (content: HistoryItem['content']) => {
+      setHistory((prev) => [...prev, {
+        id: createId(),
+        type: 'output',
+        content,
+      }])
+    }
 
-    // Add command to history
-    const newHistory = [...history, {
+    setHistory((prev) => [...prev, {
       id: createId(),
       type: 'command',
-      content: cmd
-    } as HistoryItem]
+      content: cmd,
+    }])
+    setInput('')
 
     if (!cmd) {
-      setHistory(newHistory)
-      setInput('')
       return
     }
 
@@ -95,174 +127,134 @@ function App() {
     // Process command
     switch (lowerCmd) {
       case 'help':
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: (
-            <div>
-              <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>online</span> &nbsp;&lt;duration&gt; Log adjusted online time</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show or remove online log entries</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
-            </div>
-          )
-        })
+        appendOutput(
+          <div>
+            <div style={{color: '#4ec9b0', marginBottom: '8px'}}>Available Commands:</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>user</span> &nbsp;&nbsp;Display user profile info</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>online</span> &nbsp;&lt;duration&gt; Log adjusted online time</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show or remove online log entries</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
+            <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
+          </div>
+        )
         break
 
       case 'user':
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: (
-            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-              {userText}
-            </div>
-          )
-        })
+        appendOutput(
+          <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+            {userText}
+          </div>
+        )
         break
 
       case 'projects': {
         const folderFilter = parts[1]?.toLowerCase()
         if (!folderFilter) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: (
-              <div>
-                <div>Usage: <span style={{color: '#ce9178'}}>projects</span> &lt;folder&gt;</div>
-                <div>Available folders: {projectFolders.join(', ')}</div>
-              </div>
-            )
-          })
+          appendOutput(
+            <div>
+              <div>Usage: <span style={{color: '#ce9178'}}>projects</span> &lt;folder&gt;</div>
+              <div>Available folders: {projectFolders.join(', ')}</div>
+            </div>
+          )
           break
         }
         const filteredDownloads = downloadList.filter(
           (archive) => archive.folder.toLowerCase() === folderFilter
         )
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: (
-            <div className="project-list">
-              {downloadList.length === 0 ? (
-                <div>No project downloads found.</div>
-              ) : filteredDownloads.length === 0 ? (
-                <div>
-                  <div>No projects found in folder: {folderFilter}</div>
-                  <div>Available folders: {projectFolders.join(', ')}</div>
+        appendOutput(
+          <div className="project-list">
+            {downloadList.length === 0 ? (
+              <div>No project downloads found.</div>
+            ) : filteredDownloads.length === 0 ? (
+              <div>
+                <div>No projects found in folder: {folderFilter}</div>
+                <div>Available folders: {projectFolders.join(', ')}</div>
+              </div>
+            ) : (
+              filteredDownloads.map((archive) => (
+                <div className="project-item" key={archive.label}>
+                  <span>{archive.label} </span>
+                  <a className="download-link" href={archive.url} target="_blank" rel="noreferrer">
+                    [DOWNLOAD]
+                  </a>
                 </div>
-              ) : (
-                filteredDownloads.map((archive) => (
-                  <div className="project-item" key={archive.label}>
-                    <span>{archive.label} </span>
-                    <a className="download-link" href={archive.url} target="_blank" rel="noreferrer">
-                      [DOWNLOAD]
-                    </a>
-                  </div>
-                ))
-              )}
-            </div>
-          )
-        })
+              ))
+            )}
+          </div>
+        )
         break
       }
 
       case 'links':
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: (
-            <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-              <LinkifiedText text={linksText} />
-            </div>
-          ),
-        })
+        appendOutput(
+          <div style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+            <LinkifiedText text={linksText} />
+          </div>
+        )
         break
 
       case 'theme': {
         if (parts.length === 1) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: (
-              <div>
-                <div>Current theme: <span style={{color: '#ce9178'}}>{theme}</span></div>
-                <div>Available: {THEMES.join(', ')}</div>
-                <div>Usage: <span style={{color: '#ce9178'}}>theme</span> &lt;name&gt;</div>
-              </div>
-            ),
-          })
+          appendOutput(
+            <div>
+              <div>Current theme: <span style={{color: '#ce9178'}}>{theme}</span></div>
+              <div>Available: {THEMES.join(', ')}</div>
+              <div>Usage: <span style={{color: '#ce9178'}}>theme</span> &lt;name&gt;</div>
+            </div>
+          )
           break
         }
         const nextTheme = parts[1].toLowerCase()
         if (!THEMES.includes(nextTheme)) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>Unknown theme: {nextTheme}</span>,
-          })
+          appendOutput(<span style={{color: '#e81123'}}>Unknown theme: {nextTheme}</span>)
           break
         }
         setTheme(nextTheme)
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: <span style={{color: '#4ec9b0'}}>Theme switched to {nextTheme}</span>,
-        })
+        appendOutput(<span style={{color: '#4ec9b0'}}>Theme switched to {nextTheme}</span>)
         break
       }
 
       case 'online': {
         if (parts.length > 2) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>Usage: online &lt;duration&gt;</span>,
-          })
+          appendOutput(<span style={{color: '#e81123'}}>Usage: online &lt;duration&gt;</span>)
           break
         }
 
         const result = getAdjustedOnlineTimestamp(parts[1])
         if (!result.ok) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>{result.error}</span>,
-          })
+          appendOutput(<span style={{color: '#e81123'}}>{result.error}</span>)
+          break
+        }
+
+        const headers = getOnlineMutationHeaders()
+        if (!headers) {
+          appendOutput(<span style={{color: '#e81123'}}>Online log token is required.</span>)
           break
         }
 
         try {
           const response = await fetch('/api/online', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers,
             body: JSON.stringify({ timestamp: result.timestamp }),
           })
           const data = await response.json() as OnlineLogResponse
+
+          if (response.status === 401) {
+            forgetOnlineLogToken()
+          }
 
           if (!response.ok || !data.ok) {
             throw new Error(data.error || 'Unable to write online log.')
           }
 
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#4ec9b0'}}>Online time logged: {result.timestamp}</span>,
-          })
+          appendOutput(<span style={{color: '#4ec9b0'}}>Online time logged: {result.timestamp}</span>)
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unable to write online log.'
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>Online log failed: {message}</span>,
-          })
+          appendOutput(<span style={{color: '#e81123'}}>Online log failed: {message}</span>)
         }
         break
       }
@@ -272,11 +264,7 @@ function App() {
 
         if (parts.length === 1 || tableAction === 'index') {
           if (parts.length > 2) {
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#e81123'}}>Usage: table index</span>,
-            })
+            appendOutput(<span style={{color: '#e81123'}}>Usage: table index</span>)
             break
           }
 
@@ -289,93 +277,73 @@ function App() {
             }
 
             const rows = data.rows ?? []
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: rows.length === 0 ? (
-                <div>No online log entries found.</div>
-              ) : (
-                <div className="online-table">
-                  <div className="online-table-row online-table-header">
-                    <span>#</span>
-                    <span>Timestamp</span>
-                  </div>
-                  {rows.map((timestamp, index) => (
-                    <div className="online-table-row" key={`${timestamp}-${index}`}>
-                      <span>{index + 1}</span>
-                      <span>{timestamp}</span>
-                    </div>
-                  ))}
+            appendOutput(rows.length === 0 ? (
+              <div>No online log entries found.</div>
+            ) : (
+              <div className="online-table">
+                <div className="online-table-row online-table-header">
+                  <span>#</span>
+                  <span>Timestamp</span>
                 </div>
-              ),
-            })
+                {rows.map((timestamp, index) => (
+                  <div className="online-table-row" key={`${timestamp}-${index}`}>
+                    <span>{index + 1}</span>
+                    <span>{timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            ))
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unable to read online log.'
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#e81123'}}>Table failed: {message}</span>,
-            })
+            appendOutput(<span style={{color: '#e81123'}}>Table failed: {message}</span>)
           }
           break
         }
 
         if (tableAction === 'remove') {
           if (parts.length !== 3) {
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#e81123'}}>Usage: table remove &lt;index&gt;</span>,
-            })
+            appendOutput(<span style={{color: '#e81123'}}>Usage: table remove &lt;index&gt;</span>)
             break
           }
 
           const index = Number(parts[2])
           if (!Number.isSafeInteger(index) || index < 1) {
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#e81123'}}>Index must be a positive number.</span>,
-            })
+            appendOutput(<span style={{color: '#e81123'}}>Index must be a positive number.</span>)
+            break
+          }
+
+          const headers = getOnlineMutationHeaders()
+          if (!headers) {
+            appendOutput(<span style={{color: '#e81123'}}>Online log token is required.</span>)
             break
           }
 
           try {
             const response = await fetch('/api/online', {
               method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json',
-              },
+              headers,
               body: JSON.stringify({ index }),
             })
             const data = await response.json() as OnlineRemoveResponse
+
+            if (response.status === 401) {
+              forgetOnlineLogToken()
+            }
 
             if (!response.ok || !data.ok) {
               throw new Error(data.error || 'Unable to remove online log entry.')
             }
 
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#4ec9b0'}}>Removed entry {index}: {data.removed}</span>,
-            })
+            appendOutput(<span style={{color: '#4ec9b0'}}>Removed entry {index}: {data.removed}</span>)
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unable to remove online log entry.'
-            newHistory.push({
-              id: createId(),
-              type: 'output',
-              content: <span style={{color: '#e81123'}}>Remove failed: {message}</span>,
-            })
+            appendOutput(<span style={{color: '#e81123'}}>Remove failed: {message}</span>)
           }
           break
         }
 
         if (parts.length > 1) {
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>Usage: table index | table remove &lt;index&gt;</span>,
-          })
+          appendOutput(<span style={{color: '#e81123'}}>Usage: table index | table remove &lt;index&gt;</span>)
           break
         }
         break
@@ -387,15 +355,8 @@ function App() {
         return
 
       default:
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: <span style={{color: '#e81123'}}>Command not found: {cmd}</span>
-        })
+        appendOutput(<span style={{color: '#e81123'}}>Command not found: {cmd}</span>)
     }
-
-    setHistory(newHistory)
-    setInput('')
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

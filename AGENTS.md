@@ -23,7 +23,7 @@ This is a React + TypeScript terminal-style portfolio app built with Vite. Key l
 Run commands from the repository root:
 - `npm run dev` starts the Vite dev server with HMR.
 - `npm run build` type-checks with `tsc -b` and produces a production build.
-- `npm run preview` serves the production build locally.
+- `npm run preview` builds and serves the production app through `server.mjs`, including `/api/online`.
 - `npm run lint` runs ESLint across the codebase.
 - `npm run links` prints `links.txt` (useful for validating link content).
 
@@ -42,8 +42,10 @@ Run commands from the repository root:
 - Avoid keeping unused content files, generated logs, or project metadata in `src/` unless the app imports them.
 
 ## Production Deployment
-- `npm run build` produces a static site in `dist/` that can be served by Nginx or another static file server.
-- For single-page app routing, configure Nginx to fall back to `index.html` with `try_files $uri $uri/ /index.html;`.
+- `npm run build` produces static assets in `dist/`, but the online log commands require `server.mjs`.
+- Run the app with `npm run start` after building, or use the Docker image, so `/api/online` is available.
+- Set `ONLINE_LOG_PATH` to the CSV storage path and `ONLINE_LOG_TOKEN` to a private token before enabling online log mutations.
+- If Nginx sits in front of the app, proxy requests to the Node server instead of serving `dist/` directly.
 
 ## Testing Guidelines
 There is no test framework configured yet. If adding tests:

@@ -19,6 +19,7 @@ ENV ONLINE_LOG_PATH=/data/online.csv
 RUN mkdir -p /data && chown -R node:node /data
 
 COPY server.mjs ./
+COPY onlineLogApi.mjs ./
 COPY --from=build /app/dist ./dist
 
 EXPOSE 80
