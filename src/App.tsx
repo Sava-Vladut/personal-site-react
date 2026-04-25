@@ -27,6 +27,12 @@ type OnlineTableResponse = {
   error?: string
 }
 
+type OnlineRemoveResponse = {
+  ok: boolean
+  removed?: string
+  error?: string
+}
+
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(false)
@@ -100,7 +106,7 @@ function App() {
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>online</span> &nbsp;&lt;duration&gt; Log adjusted online time</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show online log table</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show or remove online log entries</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
@@ -262,51 +268,115 @@ function App() {
       }
 
       case 'table': {
+        const tableAction = parts[1]?.toLowerCase()
+
+        if (parts.length === 1 || tableAction === 'index') {
+          if (parts.length > 2) {
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Usage: table index</span>,
+            })
+            break
+          }
+
+          try {
+            const response = await fetch('/api/online')
+            const data = await response.json() as OnlineTableResponse
+
+            if (!response.ok || !data.ok) {
+              throw new Error(data.error || 'Unable to read online log.')
+            }
+
+            const rows = data.rows ?? []
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: rows.length === 0 ? (
+                <div>No online log entries found.</div>
+              ) : (
+                <div className="online-table">
+                  <div className="online-table-row online-table-header">
+                    <span>#</span>
+                    <span>Timestamp</span>
+                  </div>
+                  {rows.map((timestamp, index) => (
+                    <div className="online-table-row" key={`${timestamp}-${index}`}>
+                      <span>{index + 1}</span>
+                      <span>{timestamp}</span>
+                    </div>
+                  ))}
+                </div>
+              ),
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unable to read online log.'
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Table failed: {message}</span>,
+            })
+          }
+          break
+        }
+
+        if (tableAction === 'remove') {
+          if (parts.length !== 3) {
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Usage: table remove &lt;index&gt;</span>,
+            })
+            break
+          }
+
+          const index = Number(parts[2])
+          if (!Number.isSafeInteger(index) || index < 1) {
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Index must be a positive number.</span>,
+            })
+            break
+          }
+
+          try {
+            const response = await fetch('/api/online', {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ index }),
+            })
+            const data = await response.json() as OnlineRemoveResponse
+
+            if (!response.ok || !data.ok) {
+              throw new Error(data.error || 'Unable to remove online log entry.')
+            }
+
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#4ec9b0'}}>Removed entry {index}: {data.removed}</span>,
+            })
+          } catch (error) {
+            const message = error instanceof Error ? error.message : 'Unable to remove online log entry.'
+            newHistory.push({
+              id: createId(),
+              type: 'output',
+              content: <span style={{color: '#e81123'}}>Remove failed: {message}</span>,
+            })
+          }
+          break
+        }
+
         if (parts.length > 1) {
           newHistory.push({
             id: createId(),
             type: 'output',
-            content: <span style={{color: '#e81123'}}>Usage: table</span>,
+            content: <span style={{color: '#e81123'}}>Usage: table index | table remove &lt;index&gt;</span>,
           })
           break
-        }
-
-        try {
-          const response = await fetch('/api/online')
-          const data = await response.json() as OnlineTableResponse
-
-          if (!response.ok || !data.ok) {
-            throw new Error(data.error || 'Unable to read online log.')
-          }
-
-          const rows = data.rows ?? []
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: rows.length === 0 ? (
-              <div>No online log entries found.</div>
-            ) : (
-              <div className="online-table">
-                <div className="online-table-row online-table-header">
-                  <span>#</span>
-                  <span>Timestamp</span>
-                </div>
-                {rows.map((timestamp, index) => (
-                  <div className="online-table-row" key={`${timestamp}-${index}`}>
-                    <span>{index + 1}</span>
-                    <span>{timestamp}</span>
-                  </div>
-                ))}
-              </div>
-            ),
-          })
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unable to read online log.'
-          newHistory.push({
-            id: createId(),
-            type: 'output',
-            content: <span style={{color: '#e81123'}}>Table failed: {message}</span>,
-          })
         }
         break
       }

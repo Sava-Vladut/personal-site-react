@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { appendFile, mkdir, readFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
@@ -53,6 +53,41 @@ const onlineLogDevPlugin = (): Plugin => ({
           sendJson(response, 200, { ok: true, rows })
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unable to read online log.'
+          sendJson(response, 500, { ok: false, error: message })
+        }
+        return
+      }
+
+      if (request.method === 'DELETE') {
+        try {
+          const body = await readRequestJson(request)
+          const index = Number(body.index)
+
+          if (!Number.isSafeInteger(index) || index < 1) {
+            sendJson(response, 400, { ok: false, error: 'Index must be a positive number.' })
+            return
+          }
+
+          const contents = await readFile(onlineLogPath, 'utf8').catch((error: NodeJS.ErrnoException) => {
+            if (error.code === 'ENOENT') return ''
+            throw error
+          })
+          const rows = contents
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+
+          if (index > rows.length) {
+            sendJson(response, 404, { ok: false, error: `No online log entry found at index ${index}.` })
+            return
+          }
+
+          const [removed] = rows.splice(index - 1, 1)
+          await mkdir(dirname(onlineLogPath), { recursive: true })
+          await writeFile(onlineLogPath, rows.length > 0 ? `${rows.join('\n')}\n` : '', 'utf8')
+          sendJson(response, 200, { ok: true, removed })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unable to remove online log entry.'
           sendJson(response, 500, { ok: false, error: message })
         }
         return
