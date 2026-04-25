@@ -15,10 +15,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=80
 ENV ONLINE_LOG_PATH=/data/online.csv
+ENV INSTAGRAM_COUNTS_CSV=/data/instagram-counts.csv
+ENV INSTAGRAM_USERS_PATH=/app/instagram-users.txt
 
 RUN mkdir -p /data && chown -R node:node /data
 
 COPY server.mjs ./
+COPY server ./server
+COPY instagram-users.txt ./
 COPY --from=build /app/dist ./dist
 
 EXPOSE 80

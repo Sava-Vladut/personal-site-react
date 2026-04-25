@@ -334,24 +334,47 @@ function App() {
     const offsetY = event.clientY - rect.top
     const maxX = window.innerWidth - rect.width
     const maxY = window.innerHeight - TASKBAR_HEIGHT - rect.height
-
-    event.currentTarget.setPointerCapture(event.pointerId)
-    setPosition({
+    const dragHandle = event.currentTarget
+    let animationFrame = 0
+    let currentPosition = {
       x: Math.min(Math.max(rect.left, 0), Math.max(0, maxX)),
       y: Math.min(Math.max(rect.top, 0), Math.max(0, maxY)),
-    })
+    }
+
+    const applyPosition = () => {
+      animationFrame = 0
+      windowElement.style.left = `${currentPosition.x}px`
+      windowElement.style.top = `${currentPosition.y}px`
+    }
+
+    dragHandle.setPointerCapture(event.pointerId)
+    setPosition(currentPosition)
+    applyPosition()
 
     const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
       const nextX = moveEvent.clientX - offsetX
       const nextY = moveEvent.clientY - offsetY
 
-      setPosition({
+      currentPosition = {
         x: Math.min(Math.max(nextX, 0), Math.max(0, maxX)),
         y: Math.min(Math.max(nextY, 0), Math.max(0, maxY)),
-      })
+      }
+
+      if (!animationFrame) {
+        animationFrame = window.requestAnimationFrame(applyPosition)
+      }
     }
 
     const stopDrag = () => {
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame)
+        applyPosition()
+      }
+
+      setPosition(currentPosition)
+      if (dragHandle.hasPointerCapture(event.pointerId)) {
+        dragHandle.releasePointerCapture(event.pointerId)
+      }
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', stopDrag)
       window.removeEventListener('pointercancel', stopDrag)
