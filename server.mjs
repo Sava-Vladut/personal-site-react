@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { mkdir, readFile, stat, appendFile, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { logAllUsers, readLogRows, readUsers, startInstagramTracker, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, 'dist')
@@ -127,6 +128,33 @@ const handleOnlineLog = async (request, response) => {
   }
 }
 
+const handleInstagramTracker = async (request, response) => {
+  if (request.method === 'GET') {
+    try {
+      const [users, rows] = await Promise.all([readUsers(), readLogRows()])
+      sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to read Instagram tracker data.'
+      sendJson(response, 500, { ok: false, error: message })
+    }
+    return
+  }
+
+  if (request.method === 'POST') {
+    try {
+      await logAllUsers()
+      const [users, rows] = await Promise.all([readUsers(), readLogRows()])
+      sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to refresh Instagram counts.'
+      sendJson(response, 500, { ok: false, error: message })
+    }
+    return
+  }
+
+  sendJson(response, 405, { ok: false, error: 'Method not allowed.' })
+}
+
 const getStaticPath = (pathname) => {
   const decodedPath = decodeURIComponent(pathname)
   const normalizedPath = normalize(decodedPath).replace(/^(\.\.[/\\])+/, '')
@@ -171,10 +199,20 @@ const server = createServer((request, response) => {
     return
   }
 
+  if (url.pathname === '/api/instagram') {
+    void handleInstagramTracker(request, response)
+    return
+  }
+
   void serveStatic(request, response)
 })
 
 server.listen(port, () => {
   console.log(`Server listening on http://localhost:${port}`)
   console.log(`Online CSV log: ${onlineLogPath}`)
+  console.log(`Instagram users: ${instagramUsersPath}`)
+  console.log(`Instagram CSV log: ${instagramCsvPath}`)
+  if (process.env.INSTAGRAM_TRACKER_DISABLED !== '1') {
+    startInstagramTracker()
+  }
 })

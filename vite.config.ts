@@ -4,6 +4,7 @@ import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
+import { logAllUsers, readLogRows, readUsers, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
 
 const timestampPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/
 const onlineLogPath = process.env.ONLINE_LOG_PATH || join(process.cwd(), 'data', 'online.csv')
@@ -118,8 +119,40 @@ const onlineLogDevPlugin = (): Plugin => ({
   },
 })
 
+const instagramTrackerDevPlugin = (): Plugin => ({
+  name: 'instagram-tracker-dev-api',
+  configureServer(server) {
+    server.middlewares.use('/api/instagram', async (request, response) => {
+      if (request.method === 'GET') {
+        try {
+          const [users, rows] = await Promise.all([readUsers(), readLogRows()])
+          sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unable to read Instagram tracker data.'
+          sendJson(response, 500, { ok: false, error: message })
+        }
+        return
+      }
+
+      if (request.method === 'POST') {
+        try {
+          await logAllUsers()
+          const [users, rows] = await Promise.all([readUsers(), readLogRows()])
+          sendJson(response, 200, { ok: true, users, rows, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unable to refresh Instagram counts.'
+          sendJson(response, 500, { ok: false, error: message })
+        }
+        return
+      }
+
+      sendJson(response, 405, { ok: false, error: 'Method not allowed.' })
+    })
+  },
+})
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), onlineLogDevPlugin()],
+  plugins: [react(), onlineLogDevPlugin(), instagramTrackerDevPlugin()],
   assetsInclude: ['**/*.rar'],
 })

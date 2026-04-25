@@ -1,0 +1,5 @@
+# One Instagram username per line.
+# Example:
+# instagram
+tudor.h8u
+_stef.ania.30

@@ -1,10 +1,8 @@
 .desktop-shell {
   min-height: 100vh;
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at 24% 18%, rgba(78, 201, 176, 0.18), transparent 28%),
-    linear-gradient(135deg, #071111 0%, #10242a 48%, #241c2d 100%);
-  color: #d7fff4;
+  background: #171713;
+  color: #f1f1e6;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -27,10 +25,9 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), transparent);
+    linear-gradient(#242217 1px, transparent 1px),
+    linear-gradient(90deg, #242217 1px, transparent 1px);
+  background-size: 48px 48px;
   pointer-events: none;
 }
 
@@ -40,53 +37,57 @@
   padding: 8px 6px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
-  color: #eefdf9;
+  border-radius: 0;
+  color: #f1f1e6;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 7px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.78rem;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  text-shadow: none;
   position: relative;
   z-index: 1;
 }
 
 .desktop-icon:hover,
 .desktop-icon:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: #242217;
+  border-color: #ded7bd;
   outline: none;
 }
 
 .desktop-icon-glyph {
   width: 48px;
   height: 48px;
-  border-radius: 8px;
-  background: rgba(9, 13, 14, 0.82);
-  border: 1px solid rgba(78, 201, 176, 0.45);
-  color: #00ff66;
+  border-radius: 0;
+  background: #11110f;
+  border: 1px solid #56513f;
+  color: #8fd19e;
   display: grid;
   place-items: center;
   font-family: 'Courier New', Courier, monospace;
   font-size: 1.2rem;
   font-weight: 700;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+  box-shadow: none;
 }
 
 .online-icon-glyph {
-  color: #d7ba7d;
-  border-color: rgba(215, 186, 125, 0.46);
+  color: #ded7bd;
+  border-color: #56513f;
+}
+
+.instagram-icon-glyph {
+  color: #f1f1e6;
+  border-color: #56513f;
+  background: #141414;
 }
 
 .desktop-taskbar {
   height: 52px;
   padding: 6px 14px;
-  background: rgba(8, 12, 15, 0.72);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: #11110f;
+  border-top: 1px solid #56513f;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -97,10 +98,10 @@
 .taskbar-app {
   width: 40px;
   height: 40px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  color: #00ff66;
+  background: #171713;
+  border: 1px solid #383426;
+  border-radius: 0;
+  color: #8fd19e;
   display: grid;
   place-items: center;
   font-family: 'Courier New', Courier, monospace;
@@ -110,13 +111,17 @@
 .taskbar-app:hover,
 .taskbar-app:focus-visible,
 .taskbar-app.active {
-  background: rgba(78, 201, 176, 0.16);
-  border-color: rgba(78, 201, 176, 0.36);
+  background: #242217;
+  border-color: #ded7bd;
   outline: none;
 }
 
 .online-taskbar-app {
-  color: #d7ba7d;
+  color: #ded7bd;
+}
+
+.instagram-taskbar-app {
+  color: #f1f1e6;
 }
 
 .taskbar-spacer {
@@ -124,8 +129,8 @@
 }
 
 .taskbar-clock {
-  color: rgba(238, 253, 249, 0.78);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #9a957f;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.8rem;
 }
 
@@ -136,11 +141,9 @@
   max-height: calc(100vh - 86px);
   max-height: calc(100dvh - 86px);
   background: var(--bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  border-radius: 0;
+  box-shadow: 12px 12px 0 #050505;
   display: flex;
   flex-direction: column;
   font-family: 'Courier New', Courier, monospace;
@@ -150,7 +153,12 @@
   left: 50%;
   z-index: 2;
   transform: translate(-50%, -50%);
-  transition: all 0.3s ease;
+  transition: none;
+}
+
+.terminal-window.drag-positioned,
+.app-window.drag-positioned {
+  transform: none;
 }
 
 .app-window {
@@ -159,29 +167,27 @@
   max-width: 90vw;
   max-height: calc(100vh - 86px);
   max-height: calc(100dvh - 86px);
-  background: rgba(12, 15, 16, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.28);
-  color: #d7fff4;
+  background: #11110f;
+  border: 1px solid #56513f;
+  border-radius: 0;
+  box-shadow: 12px 12px 0 #050505;
+  color: #f1f1e6;
   display: flex;
   flex-direction: column;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Courier New', Courier, monospace;
   overflow: hidden;
   position: absolute;
   top: calc(50% + 18px);
   left: calc(50% + 34px);
   z-index: 2;
   transform: translate(-50%, -50%);
-  transition: all 0.3s ease;
-  --bg-header: rgba(18, 24, 26, 0.96);
-  --text: #d7fff4;
-  --muted: rgba(215, 255, 244, 0.62);
-  --prompt: #d7ba7d;
-  --accent: #d7ba7d;
-  --border-soft: rgba(255, 255, 255, 0.08);
+  transition: none;
+  --bg-header: #1b1b18;
+  --text: #f1f1e6;
+  --muted: #9a957f;
+  --prompt: #ded7bd;
+  --accent: #ded7bd;
+  --border-soft: #56513f;
 }
 
 .app-window.maximized {
@@ -214,7 +220,7 @@
 }
 
 .online-app-label {
-  color: rgba(215, 255, 244, 0.72);
+  color: #9a957f;
   font-size: 0.86rem;
 }
 
@@ -222,47 +228,47 @@
   min-width: 0;
   height: 36px;
   padding: 0 10px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  color: #eefdf9;
+  background: #171713;
+  border: 1px solid #56513f;
+  border-radius: 0;
+  color: #f1f1e6;
   font: inherit;
   outline: none;
 }
 
 .online-app-input:focus {
-  border-color: rgba(215, 186, 125, 0.65);
-  box-shadow: 0 0 0 3px rgba(215, 186, 125, 0.12);
+  border-color: #ded7bd;
+  box-shadow: none;
 }
 
 .online-app-button {
   min-width: 72px;
   height: 36px;
   padding: 0 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  color: #eefdf9;
+  background: #171713;
+  border: 1px solid #56513f;
+  border-radius: 0;
+  color: #f1f1e6;
   font: inherit;
 }
 
 .online-app-button:hover:not(:disabled),
 .online-app-button:focus-visible:not(:disabled) {
-  background: rgba(215, 186, 125, 0.14);
-  border-color: rgba(215, 186, 125, 0.42);
+  background: #242217;
+  border-color: #ded7bd;
   outline: none;
 }
 
 .online-app-button.primary {
-  background: rgba(215, 186, 125, 0.18);
-  border-color: rgba(215, 186, 125, 0.42);
-  color: #ffe3a8;
+  background: #ded7bd;
+  border-color: #ded7bd;
+  color: #11110f;
 }
 
 .online-app-button.danger {
-  background: rgba(232, 17, 35, 0.16);
-  border-color: rgba(232, 17, 35, 0.42);
-  color: #ffb8bf;
+  background: #3a1816;
+  border-color: #9f302a;
+  color: #f1f1e6;
 }
 
 .online-app-button:disabled {
@@ -272,7 +278,7 @@
 
 .online-app-message {
   min-height: 22px;
-  color: #d7ba7d;
+  color: #ded7bd;
   font-size: 0.88rem;
 }
 
@@ -280,25 +286,25 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border: 1px solid #56513f;
+  border-radius: 0;
   padding: 14px;
-  background: rgba(0, 0, 0, 0.18);
+  background: #171713;
 }
 
 .online-app-table {
-  color: #eefdf9;
+  color: #f1f1e6;
   font-family: 'Courier New', Courier, monospace;
 }
 
 .online-app-empty {
-  color: rgba(215, 255, 244, 0.68);
+  color: #9a957f;
 }
 
 .online-app-link-button {
   background: transparent;
   border: none;
-  color: #d7ba7d;
+  color: #ded7bd;
   cursor: pointer;
   font: inherit;
   padding: 0;
@@ -311,7 +317,7 @@
 }
 
 .online-app-link-button.danger {
-  color: #ff8f9a;
+  color: #e46f68;
 }
 
 .online-app-link-button:disabled {
@@ -325,14 +331,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: rgba(215, 255, 244, 0.74);
+  color: #9a957f;
   font-size: 0.86rem;
 }
 
 .online-modal-backdrop {
   position: absolute;
   inset: 40px 0 0;
-  background: rgba(0, 0, 0, 0.52);
+  background: #11110f;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -340,21 +346,21 @@
 
 .online-modal {
   width: min(360px, 100%);
-  background: rgba(18, 24, 26, 0.98);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.52);
+  background: #11110f;
+  border: 1px solid #ded7bd;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 #050505;
   padding: 18px;
 }
 
 .online-modal-title {
-  color: #eefdf9;
+  color: #f1f1e6;
   font-weight: 700;
   margin-bottom: 8px;
 }
 
 .online-modal-body {
-  color: rgba(215, 255, 244, 0.74);
+  color: #9a957f;
   overflow-wrap: anywhere;
 }
 
@@ -363,6 +369,191 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
+}
+
+.instagram-app-window {
+  width: 920px;
+  height: 590px;
+  left: calc(50% + 72px);
+  top: calc(50% + 42px);
+  background: #11110f;
+  border: 1px solid #ded7bd;
+  border-radius: 0;
+  box-shadow: 12px 12px 0 #050505;
+  color: #f1f1e6;
+  --bg-header: #1b1b18;
+  --text: #f1f1e6;
+  --muted: #9a957f;
+  --prompt: #ded7bd;
+  --accent: #ded7bd;
+  --border-soft: #56513f;
+}
+
+.instagram-app-window .terminal-header {
+  height: 38px;
+  border-bottom: 1px solid #ded7bd;
+}
+
+.instagram-app-window .terminal-title {
+  margin-left: 12px;
+  color: #f1f1e6;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.instagram-app-window .terminal-icon {
+  color: #11110f;
+  background: #ded7bd;
+  padding: 1px 4px;
+}
+
+.instagram-app-window .control-btn:hover {
+  background: #302d24;
+}
+
+.instagram-app-window .control-btn.close:hover {
+  background: #9f302a;
+}
+
+.instagram-app-window .online-app-button {
+  min-width: 116px;
+  height: 34px;
+  background: #ded7bd;
+  border: 1px solid #ded7bd;
+  border-radius: 0;
+  color: #11110f;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.instagram-app-window .online-app-button:hover:not(:disabled),
+.instagram-app-window .online-app-button:focus-visible:not(:disabled) {
+  background: #f1f1e6;
+  border-color: #f1f1e6;
+  box-shadow: 4px 4px 0 #4b4637;
+}
+
+.instagram-app-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #11110f;
+}
+
+.instagram-app-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #56513f;
+}
+
+.instagram-app-title {
+  color: #f1f1e6;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.instagram-app-subtitle,
+.instagram-user-list {
+  color: #9a957f;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+}
+
+.instagram-user-list {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0;
+  border-bottom: 1px solid #56513f;
+  background: #171713;
+}
+
+.instagram-user-list span {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid #383426;
+  color: #ded7bd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instagram-table-wrap {
+  flex: 1;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #11110f;
+  padding: 0;
+}
+
+.instagram-table {
+  min-width: 820px;
+  display: grid;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(120px, 0.8fr) max-content max-content minmax(80px, 0.5fr);
+  color: #f1f1e6;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.86rem;
+}
+
+.instagram-table-row {
+  display: contents;
+}
+
+.instagram-table-row span {
+  min-width: 0;
+  padding: 9px 12px;
+  border-right: 1px solid #2b291f;
+  border-bottom: 1px solid #2b291f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instagram-table-header span {
+  color: #11110f;
+  font-weight: 700;
+  background: #ded7bd;
+  text-transform: uppercase;
+}
+
+.instagram-table-row:not(.instagram-table-header) span:nth-child(3),
+.instagram-table-row:not(.instagram-table-header) span:nth-child(4) {
+  color: #ded7bd;
+  text-align: right;
+}
+
+.instagram-table-row:not(.instagram-table-header) span:nth-child(5) {
+  color: #8fd19e;
+  text-transform: uppercase;
+}
+
+.instagram-app-window .online-app-message {
+  min-height: 0;
+  margin: 0;
+  padding: 8px 18px;
+  border-bottom: 1px solid #56513f;
+  color: #ded7bd;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+}
+
+.instagram-app-window .online-app-empty {
+  color: #9a957f;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 18px;
 }
 
 .terminal-window.maximized {
@@ -385,6 +576,8 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-soft);
+  cursor: move;
+  touch-action: none;
   user-select: none;
 }
 
@@ -392,7 +585,7 @@
   margin-left: 16px;
   color: var(--text);
   font-size: 0.85rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Win11 System Font for title */
+  font-family: 'Courier New', Courier, monospace;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -419,11 +612,11 @@
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: background-color 0.1s;
+  transition: none;
 }
 
 .control-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #242217;
 }
 
 .control-btn.close:hover {
@@ -510,14 +703,14 @@
 }
 
 .download-link {
-  color: #d7ba7d;
+  color: #ded7bd;
   text-decoration: none;
-  border-bottom: 1px dotted #d7ba7d;
+  border-bottom: 1px solid #ded7bd;
 }
 
 .download-link:hover {
-  background: rgba(215, 186, 125, 0.2);
-  color: #ffd59e;
+  background: #242217;
+  color: #f1f1e6;
 }
 
 .ascii-wave {
@@ -525,7 +718,7 @@
   font-size: 0.64rem;
   font-family: monospace;
   white-space: pre;
-  color: #00ff66;
+  color: #8fd19e;
 }
 
 .ascii-wave-line {
@@ -554,7 +747,7 @@
 .linkified {
   color: var(--link);
   text-decoration: none;
-  border-bottom: 1px dotted var(--link);
+  border-bottom: 1px solid var(--link);
 }
 
 .linkified:hover {
@@ -565,7 +758,7 @@
 .online-table {
   display: grid;
   grid-template-columns: max-content max-content max-content;
-  gap: 4px 24px;
+  gap: 0;
 }
 
 .online-table.online-app-table {
@@ -576,14 +769,21 @@
   display: contents;
 }
 
+.online-table-row span {
+  padding: 4px 10px;
+  border-right: 1px solid #2b291f;
+  border-bottom: 1px solid #2b291f;
+}
+
 .online-table-row span:first-child {
   color: var(--muted);
   text-align: right;
 }
 
 .online-table-header span {
-  color: var(--accent);
+  color: #11110f;
   font-weight: bold;
+  background: var(--accent);
 }
 
 .online-table-pagination {
@@ -594,9 +794,7 @@
 
 @media (max-width: 720px) {
   .desktop-shell {
-    background:
-      radial-gradient(circle at 15% 10%, rgba(78, 201, 176, 0.16), transparent 32%),
-      linear-gradient(160deg, #071111 0%, #10242a 52%, #20192a 100%);
+    background: #171713;
   }
 
   .desktop-surface {
@@ -675,6 +873,20 @@
   .online-app-body {
     padding: 14px;
     gap: 12px;
+  }
+
+  .instagram-app-body {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .instagram-app-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .instagram-table {
+    min-width: 720px;
   }
 
   .online-app-form {

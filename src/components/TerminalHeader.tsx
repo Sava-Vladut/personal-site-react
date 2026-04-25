@@ -1,6 +1,7 @@
 type TerminalHeaderProps = {
   title: string
   icon?: string
+  onDragStart?: (event: React.PointerEvent<HTMLDivElement>) => void
   onMinimize: () => void
   onToggleMaximize: () => void
   onClose: () => void
@@ -9,12 +10,13 @@ type TerminalHeaderProps = {
 const TerminalHeader = ({
   title,
   icon = '_>',
+  onDragStart,
   onMinimize,
   onToggleMaximize,
   onClose,
 }: TerminalHeaderProps) => {
   return (
-    <div className="terminal-header">
+    <div className="terminal-header" onPointerDown={onDragStart}>
       <div className="terminal-title">
         <span className="terminal-icon">{icon}</span>
         {title}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react'
 import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
@@ -33,7 +33,22 @@ type OnlineRemoveResponse = {
   error?: string
 }
 
+type InstagramTrackerResponse = {
+  ok: boolean
+  users?: string[]
+  rows?: string[]
+  csvPath?: string
+  usersPath?: string
+  error?: string
+}
+
 const ONLINE_TABLE_PAGE_SIZE = 10
+const TASKBAR_HEIGHT = 52
+
+type WindowPosition = {
+  x: number
+  y: number
+}
 
 const getTimePassed = (timestamp: string) => {
   const normalizedTimestamp = timestamp.replace(' ', 'T')
@@ -63,12 +78,54 @@ const getTimePassed = (timestamp: string) => {
   return 'Just now'
 }
 
+const parseCsvRow = (row: string) => {
+  const values: string[] = []
+  let value = ''
+  let quoted = false
+
+  for (let index = 0; index < row.length; index += 1) {
+    const char = row[index]
+    const nextChar = row[index + 1]
+
+    if (char === '"' && quoted && nextChar === '"') {
+      value += '"'
+      index += 1
+      continue
+    }
+
+    if (char === '"') {
+      quoted = !quoted
+      continue
+    }
+
+    if (char === ',' && !quoted) {
+      values.push(value)
+      value = ''
+      continue
+    }
+
+    value += char
+  }
+
+  values.push(value)
+  return values
+}
+
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(false)
+  const [terminalPosition, setTerminalPosition] = useState<WindowPosition | null>(null)
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [onlineMaximized, setOnlineMaximized] = useState(false)
+  const [onlinePosition, setOnlinePosition] = useState<WindowPosition | null>(null)
+  const [instagramOpen, setInstagramOpen] = useState(false)
+  const [instagramMaximized, setInstagramMaximized] = useState(false)
+  const [instagramPosition, setInstagramPosition] = useState<WindowPosition | null>(null)
+  const [instagramUsers, setInstagramUsers] = useState<string[]>([])
+  const [instagramRows, setInstagramRows] = useState<string[]>([])
+  const [instagramMessage, setInstagramMessage] = useState('')
+  const [instagramLoading, setInstagramLoading] = useState(false)
   const [onlineRows, setOnlineRows] = useState<string[]>([])
   const [onlinePage, setOnlinePage] = useState(1)
   const [onlineDuration, setOnlineDuration] = useState('')
@@ -96,6 +153,9 @@ function App() {
 
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const terminalWindowRef = useRef<HTMLDivElement>(null)
+  const onlineWindowRef = useRef<HTMLDivElement>(null)
+  const instagramWindowRef = useRef<HTMLDivElement>(null)
 
   const openTerminal = () => {
     setTerminalOpen(true)
@@ -127,6 +187,15 @@ function App() {
     setOnlineMaximized(false)
   }
 
+  const openInstagramApp = () => {
+    setInstagramOpen(true)
+  }
+
+  const closeInstagramApp = () => {
+    setInstagramOpen(false)
+    setInstagramMaximized(false)
+  }
+
   const handleOnlineRefresh = useCallback(async () => {
     setOnlineLoading(true)
     setOnlineMessage('')
@@ -140,6 +209,29 @@ function App() {
       setOnlineLoading(false)
     }
   }, [refreshOnlineRows])
+
+  const refreshInstagramRows = useCallback(async (method: 'GET' | 'POST' = 'GET') => {
+    setInstagramLoading(true)
+    setInstagramMessage('')
+
+    try {
+      const response = await fetch('/api/instagram', { method })
+      const data = await response.json() as InstagramTrackerResponse
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Unable to read Instagram tracker.')
+      }
+
+      setInstagramUsers(data.users ?? [])
+      setInstagramRows(data.rows ?? [])
+      setInstagramMessage(method === 'POST' ? 'Refresh complete.' : '')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to read Instagram tracker.'
+      setInstagramMessage(`Instagram tracker failed: ${message}`)
+    } finally {
+      setInstagramLoading(false)
+    }
+  }, [])
 
   const handleOnlineAdd = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -228,6 +320,48 @@ function App() {
     inputRef.current?.focus()
   }
 
+  const startWindowDrag = (
+    event: PointerEvent<HTMLDivElement>,
+    windowElement: HTMLDivElement | null,
+    setPosition: React.Dispatch<React.SetStateAction<WindowPosition | null>>,
+    isMaximized: boolean,
+  ) => {
+    if (isMaximized || !windowElement || event.button !== 0) return
+    if ((event.target as HTMLElement).closest('button')) return
+
+    const rect = windowElement.getBoundingClientRect()
+    const offsetX = event.clientX - rect.left
+    const offsetY = event.clientY - rect.top
+    const maxX = window.innerWidth - rect.width
+    const maxY = window.innerHeight - TASKBAR_HEIGHT - rect.height
+
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setPosition({
+      x: Math.min(Math.max(rect.left, 0), Math.max(0, maxX)),
+      y: Math.min(Math.max(rect.top, 0), Math.max(0, maxY)),
+    })
+
+    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
+      const nextX = moveEvent.clientX - offsetX
+      const nextY = moveEvent.clientY - offsetY
+
+      setPosition({
+        x: Math.min(Math.max(nextX, 0), Math.max(0, maxX)),
+        y: Math.min(Math.max(nextY, 0), Math.max(0, maxY)),
+      })
+    }
+
+    const stopDrag = () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', stopDrag)
+      window.removeEventListener('pointercancel', stopDrag)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', stopDrag)
+    window.addEventListener('pointercancel', stopDrag)
+  }
+
   // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -240,6 +374,12 @@ function App() {
   }, [handleOnlineRefresh, onlineOpen])
 
   useEffect(() => {
+    if (!instagramOpen) return
+
+    refreshInstagramRows()
+  }, [instagramOpen, refreshInstagramRows])
+
+  useEffect(() => {
     setOnlinePage((currentPage) => Math.min(currentPage, Math.max(1, Math.ceil(onlineRows.length / ONLINE_TABLE_PAGE_SIZE))))
   }, [onlineRows.length])
 
@@ -247,6 +387,10 @@ function App() {
   const normalizedOnlinePage = Math.min(onlinePage, onlinePageCount)
   const onlinePageStart = (normalizedOnlinePage - 1) * ONLINE_TABLE_PAGE_SIZE
   const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
+  const instagramLogRows = instagramRows.slice(-30).reverse().map((row) => {
+    const [loggedAt = '', username = '', followers = '', following = '', status = '', error = ''] = parseCsvRow(row)
+    return { loggedAt, username, followers, following, status, error }
+  })
 
   const { aliasMap, commands } = parseCommandAliases(commandsText, DEFAULT_COMMANDS)
   const projectFolders = getProjectFolders()
@@ -693,10 +837,21 @@ function App() {
           <span>Online</span>
         </button>
 
+        <button className="desktop-icon" type="button" onDoubleClick={openInstagramApp} onClick={openInstagramApp}>
+          <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
+          <span>Instagram</span>
+        </button>
+
         {terminalOpen && (
-          <div className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''}`} onClick={focusInput}>
+          <div
+            ref={terminalWindowRef}
+            className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''} ${terminalPosition ? 'drag-positioned' : ''}`}
+            style={terminalPosition && !maximized ? { left: terminalPosition.x, top: terminalPosition.y } : undefined}
+            onClick={focusInput}
+          >
             <TerminalHeader
               title="grim@portofolio: ~"
+              onDragStart={(event) => startWindowDrag(event, terminalWindowRef.current, setTerminalPosition, maximized)}
               onMinimize={() => setTerminalOpen(false)}
               onToggleMaximize={() => setMaximized(!maximized)}
               onClose={closeTerminal}
@@ -716,10 +871,15 @@ function App() {
         )}
 
         {onlineOpen && (
-          <div className={`app-window online-app-window ${onlineMaximized ? 'maximized' : ''}`}>
+          <div
+            ref={onlineWindowRef}
+            className={`app-window online-app-window ${onlineMaximized ? 'maximized' : ''} ${onlinePosition ? 'drag-positioned' : ''}`}
+            style={onlinePosition && !onlineMaximized ? { left: onlinePosition.x, top: onlinePosition.y } : undefined}
+          >
             <TerminalHeader
               title="online log"
               icon="●"
+              onDragStart={(event) => startWindowDrag(event, onlineWindowRef.current, setOnlinePosition, onlineMaximized)}
               onMinimize={() => setOnlineOpen(false)}
               onToggleMaximize={() => setOnlineMaximized(!onlineMaximized)}
               onClose={closeOnlineApp}
@@ -838,6 +998,81 @@ function App() {
             )}
           </div>
         )}
+
+        {instagramOpen && (
+          <div
+            ref={instagramWindowRef}
+            className={`app-window instagram-app-window ${instagramMaximized ? 'maximized' : ''} ${instagramPosition ? 'drag-positioned' : ''}`}
+            style={instagramPosition && !instagramMaximized ? { left: instagramPosition.x, top: instagramPosition.y } : undefined}
+          >
+            <TerminalHeader
+              title="instagram tracker"
+              icon="IG"
+              onDragStart={(event) => startWindowDrag(event, instagramWindowRef.current, setInstagramPosition, instagramMaximized)}
+              onMinimize={() => setInstagramOpen(false)}
+              onToggleMaximize={() => setInstagramMaximized(!instagramMaximized)}
+              onClose={closeInstagramApp}
+            />
+
+            <div className="instagram-app-body">
+              <div className="instagram-app-toolbar">
+                <div>
+                  <div className="instagram-app-title">Followers / Following</div>
+                  <div className="instagram-app-subtitle">
+                    {instagramUsers.length} watched user{instagramUsers.length === 1 ? '' : 's'} · checks every 30-40 minutes
+                  </div>
+                </div>
+                <button
+                  className="online-app-button primary"
+                  type="button"
+                  disabled={instagramLoading}
+                  onClick={() => refreshInstagramRows('POST')}
+                >
+                  Refresh now
+                </button>
+              </div>
+
+              {instagramMessage && (
+                <div className="online-app-message">{instagramMessage}</div>
+              )}
+
+              <div className="instagram-user-list">
+                {instagramUsers.length === 0 ? (
+                  <span>Add usernames to instagram-users.txt.</span>
+                ) : (
+                  instagramUsers.map((user) => <span key={user}>@{user}</span>)
+                )}
+              </div>
+
+              <div className="online-app-table-wrap instagram-table-wrap">
+                {instagramLogRows.length === 0 ? (
+                  <div className="online-app-empty">
+                    {instagramLoading ? 'Loading Instagram counts...' : 'No Instagram rows logged yet.'}
+                  </div>
+                ) : (
+                  <div className="instagram-table">
+                    <div className="instagram-table-row instagram-table-header">
+                      <span>Timestamp</span>
+                      <span>User</span>
+                      <span>Followers</span>
+                      <span>Following</span>
+                      <span>Status</span>
+                    </div>
+                    {instagramLogRows.map((row, index) => (
+                      <div className="instagram-table-row" key={`${row.loggedAt}-${row.username}-${index}`}>
+                        <span>{row.loggedAt}</span>
+                        <span>@{row.username}</span>
+                        <span>{row.followers || '-'}</span>
+                        <span>{row.following || '-'}</span>
+                        <span title={row.error}>{row.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       <footer className="desktop-taskbar">
@@ -856,6 +1091,14 @@ function App() {
           onClick={openOnlineApp}
         >
           <span className="taskbar-icon" aria-hidden="true">●</span>
+        </button>
+        <button
+          className={`taskbar-app instagram-taskbar-app ${instagramOpen ? 'active' : ''}`}
+          type="button"
+          aria-label="Instagram"
+          onClick={openInstagramApp}
+        >
+          <span className="taskbar-icon" aria-hidden="true">IG</span>
         </button>
         <div className="taskbar-spacer" />
         <div className="taskbar-clock">grimOS</div>
