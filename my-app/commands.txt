@@ -6,6 +6,4 @@ projects: projects, project
 links: links, link
 theme: theme, skin
 miner: miner
-online: online
-table: table, times
 clear: clear, cls
