@@ -19,12 +19,11 @@ body {
   margin: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--bg);
+  min-height: 100dvh;
+  background: #071111;
   color: var(--accent);
   overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  overscroll-behavior: none;
 }
 
 a {
@@ -39,9 +38,6 @@ code {
 #root {
   width: 100%;
   height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 
 h1, h2, h3, h4, p, li, span {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
@@ -35,9 +35,49 @@ type OnlineRemoveResponse = {
 
 const ONLINE_TABLE_PAGE_SIZE = 10
 
+const getTimePassed = (timestamp: string) => {
+  const normalizedTimestamp = timestamp.replace(' ', 'T')
+  const timestampMs = new Date(normalizedTimestamp).getTime()
+
+  if (Number.isNaN(timestampMs)) {
+    return 'Unknown'
+  }
+
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestampMs) / 1000))
+  const days = Math.floor(elapsedSeconds / 86_400)
+  const hours = Math.floor((elapsedSeconds % 86_400) / 3_600)
+  const minutes = Math.floor((elapsedSeconds % 3_600) / 60)
+
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m`
+  }
+
+  return 'Just now'
+}
+
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(false)
+  const [terminalOpen, setTerminalOpen] = useState(false)
+  const [onlineOpen, setOnlineOpen] = useState(false)
+  const [onlineMaximized, setOnlineMaximized] = useState(false)
+  const [onlineRows, setOnlineRows] = useState<string[]>([])
+  const [onlinePage, setOnlinePage] = useState(1)
+  const [onlineDuration, setOnlineDuration] = useState('')
+  const [onlineMessage, setOnlineMessage] = useState('')
+  const [onlineLoading, setOnlineLoading] = useState(false)
+  const [onlineRemoveTarget, setOnlineRemoveTarget] = useState<{
+    index: number
+    timestamp: string
+  } | null>(null)
   const [theme, setTheme] = useState('matrix')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -57,8 +97,132 @@ function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const openTerminal = () => {
+    setTerminalOpen(true)
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  const closeTerminal = () => {
+    setTerminalOpen(false)
+    setMaximized(false)
+  }
+
+  const refreshOnlineRows = useCallback(async () => {
+    const response = await fetch('/api/online')
+    const data = await response.json() as OnlineTableResponse
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || 'Unable to read online log.')
+    }
+
+    setOnlineRows(data.rows ?? [])
+  }, [])
+
+  const openOnlineApp = () => {
+    setOnlineOpen(true)
+  }
+
+  const closeOnlineApp = () => {
+    setOnlineOpen(false)
+    setOnlineMaximized(false)
+  }
+
+  const handleOnlineRefresh = useCallback(async () => {
+    setOnlineLoading(true)
+    setOnlineMessage('')
+
+    try {
+      await refreshOnlineRows()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to read online log.'
+      setOnlineMessage(`Refresh failed: ${message}`)
+    } finally {
+      setOnlineLoading(false)
+    }
+  }, [refreshOnlineRows])
+
+  const handleOnlineAdd = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setOnlineLoading(true)
+    setOnlineMessage('')
+
+    const rawDuration = onlineDuration.trim()
+    const durationParts = rawDuration.split(/\s+/)
+    if (durationParts[0]?.toLowerCase() === 'online' && durationParts.length > 2) {
+      setOnlineMessage('Usage: online <duration>')
+      setOnlineLoading(false)
+      return
+    }
+    const duration = durationParts[0]?.toLowerCase() === 'online'
+      ? durationParts[1]
+      : rawDuration || undefined
+    const result = getAdjustedOnlineTimestamp(duration)
+    if (!result.ok) {
+      setOnlineMessage(result.error)
+      setOnlineLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/online', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ timestamp: result.timestamp }),
+      })
+      const data = await response.json() as OnlineLogResponse
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Unable to write online log.')
+      }
+
+      setOnlineDuration('')
+      setOnlineMessage(`Added ${result.timestamp}`)
+      await refreshOnlineRows()
+      setOnlinePage(1)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to write online log.'
+      setOnlineMessage(`Add failed: ${message}`)
+    } finally {
+      setOnlineLoading(false)
+    }
+  }
+
+  const handleOnlineRemove = async () => {
+    if (!onlineRemoveTarget) return
+
+    setOnlineLoading(true)
+    setOnlineMessage('')
+
+    try {
+      const response = await fetch('/api/online', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ index: onlineRemoveTarget.index }),
+      })
+      const data = await response.json() as OnlineRemoveResponse
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Unable to remove online log entry.')
+      }
+
+      setOnlineMessage(`Removed entry ${onlineRemoveTarget.index}: ${data.removed}`)
+      setOnlineRemoveTarget(null)
+      await refreshOnlineRows()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to remove online log entry.'
+      setOnlineMessage(`Remove failed: ${message}`)
+    } finally {
+      setOnlineLoading(false)
+    }
+  }
+
   // Auto-focus input on click anywhere
   const focusInput = () => {
+    if (!terminalOpen) return
     const selection = window.getSelection?.()
     if (selection && selection.toString()) return
     inputRef.current?.focus()
@@ -68,6 +232,21 @@ function App() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
+
+  useEffect(() => {
+    if (!onlineOpen) return
+
+    handleOnlineRefresh()
+  }, [handleOnlineRefresh, onlineOpen])
+
+  useEffect(() => {
+    setOnlinePage((currentPage) => Math.min(currentPage, Math.max(1, Math.ceil(onlineRows.length / ONLINE_TABLE_PAGE_SIZE))))
+  }, [onlineRows.length])
+
+  const onlinePageCount = Math.max(1, Math.ceil(onlineRows.length / ONLINE_TABLE_PAGE_SIZE))
+  const normalizedOnlinePage = Math.min(onlinePage, onlinePageCount)
+  const onlinePageStart = (normalizedOnlinePage - 1) * ONLINE_TABLE_PAGE_SIZE
+  const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
 
   const { aliasMap, commands } = parseCommandAliases(commandsText, DEFAULT_COMMANDS)
   const projectFolders = getProjectFolders()
@@ -256,6 +435,10 @@ function App() {
             type: 'output',
             content: <span style={{color: '#4ec9b0'}}>Online time logged: {result.timestamp}</span>,
           })
+          if (onlineOpen) {
+            await refreshOnlineRows()
+            setOnlinePage(1)
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unable to write online log.'
           newHistory.push({
@@ -315,11 +498,13 @@ function App() {
                   <div className="online-table-row online-table-header">
                     <span>#</span>
                     <span>Timestamp</span>
+                    <span>Time passed</span>
                   </div>
                   {pageRows.map((timestamp, index) => (
                     <div className="online-table-row" key={`${timestamp}-${index}`}>
                       <span>{pageStart + index + 1}</span>
                       <span>{timestamp}</span>
+                      <span>{getTimePassed(timestamp)}</span>
                     </div>
                   ))}
                   <div className="online-table-pagination">
@@ -379,6 +564,9 @@ function App() {
               type: 'output',
               content: <span style={{color: '#4ec9b0'}}>Removed entry {index}: {data.removed}</span>,
             })
+            if (onlineOpen) {
+              await refreshOnlineRows()
+            }
           } catch (error) {
             const message = error instanceof Error ? error.message : 'Unable to remove online log entry.'
             newHistory.push({
@@ -493,22 +681,185 @@ function App() {
   }
 
   return (
-    <div className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''}`} onClick={focusInput}>
-      <TerminalHeader
-        title="grim@portofolio: ~"
-        onToggleMaximize={() => setMaximized(!maximized)}
-      />
-      <TerminalBody
-        history={history}
-        input={input}
-        inputRef={inputRef}
-        bottomRef={bottomRef}
-        onInputChange={(value) => {
-          setInput(value)
-          setHistoryIndex(-1)
-        }}
-        onKeyDown={handleKeyDown}
-      />
+    <div className="desktop-shell">
+      <main className="desktop-surface" aria-label="Desktop">
+        <button className="desktop-icon" type="button" onDoubleClick={openTerminal} onClick={openTerminal}>
+          <span className="desktop-icon-glyph" aria-hidden="true">_&gt;</span>
+          <span>Terminal</span>
+        </button>
+
+        <button className="desktop-icon" type="button" onDoubleClick={openOnlineApp} onClick={openOnlineApp}>
+          <span className="desktop-icon-glyph online-icon-glyph" aria-hidden="true">●</span>
+          <span>Online</span>
+        </button>
+
+        {terminalOpen && (
+          <div className={`terminal-window theme-${theme} ${maximized ? 'maximized' : ''}`} onClick={focusInput}>
+            <TerminalHeader
+              title="grim@portofolio: ~"
+              onMinimize={() => setTerminalOpen(false)}
+              onToggleMaximize={() => setMaximized(!maximized)}
+              onClose={closeTerminal}
+            />
+            <TerminalBody
+              history={history}
+              input={input}
+              inputRef={inputRef}
+              bottomRef={bottomRef}
+              onInputChange={(value) => {
+                setInput(value)
+                setHistoryIndex(-1)
+              }}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+        )}
+
+        {onlineOpen && (
+          <div className={`app-window online-app-window ${onlineMaximized ? 'maximized' : ''}`}>
+            <TerminalHeader
+              title="online log"
+              icon="●"
+              onMinimize={() => setOnlineOpen(false)}
+              onToggleMaximize={() => setOnlineMaximized(!onlineMaximized)}
+              onClose={closeOnlineApp}
+            />
+
+            <div className="online-app-body">
+              <form className="online-app-form" onSubmit={handleOnlineAdd}>
+                <label className="online-app-label" htmlFor="online-duration">Command</label>
+                <input
+                  id="online-duration"
+                  className="online-app-input"
+                  type="text"
+                  value={onlineDuration}
+                  onChange={(event) => setOnlineDuration(event.target.value)}
+                  placeholder="online 15m, 15m, 5h"
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                <button className="online-app-button primary" type="submit" disabled={onlineLoading}>
+                  Add
+                </button>
+                <button className="online-app-button" type="button" onClick={handleOnlineRefresh} disabled={onlineLoading}>
+                  Refresh
+                </button>
+              </form>
+
+              {onlineMessage && (
+                <div className="online-app-message">{onlineMessage}</div>
+              )}
+
+              <div className="online-app-table-wrap">
+                {onlineRows.length === 0 ? (
+                  <div className="online-app-empty">
+                    {onlineLoading ? 'Loading online log...' : 'No online log entries found.'}
+                  </div>
+                ) : (
+                  <div className="online-table online-app-table">
+                    <div className="online-table-row online-table-header">
+                      <span>#</span>
+                      <span>Timestamp</span>
+                      <span>Time passed</span>
+                      <span>Action</span>
+                    </div>
+                    {onlinePageRows.map((timestamp, index) => (
+                      <div className="online-table-row" key={`${timestamp}-${onlinePageStart + index}`}>
+                        <span>{onlinePageStart + index + 1}</span>
+                        <span>{timestamp}</span>
+                        <span>{getTimePassed(timestamp)}</span>
+                        <span>
+                          <button
+                            className="online-app-link-button danger"
+                            type="button"
+                            disabled={onlineLoading}
+                            onClick={() => setOnlineRemoveTarget({
+                              index: onlinePageStart + index + 1,
+                              timestamp,
+                            })}
+                          >
+                            Remove
+                          </button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="online-app-pagination">
+                <button
+                  className="online-app-button"
+                  type="button"
+                  onClick={() => setOnlinePage((page) => Math.max(1, page - 1))}
+                  disabled={onlineLoading || normalizedOnlinePage === 1}
+                >
+                  Prev
+                </button>
+                <span>Page {normalizedOnlinePage} of {onlinePageCount} ({onlineRows.length})</span>
+                <button
+                  className="online-app-button"
+                  type="button"
+                  onClick={() => setOnlinePage((page) => Math.min(onlinePageCount, page + 1))}
+                  disabled={onlineLoading || normalizedOnlinePage === onlinePageCount}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+
+            {onlineRemoveTarget && (
+              <div className="online-modal-backdrop" role="presentation">
+                <div className="online-modal" role="dialog" aria-modal="true" aria-labelledby="online-remove-title">
+                  <div id="online-remove-title" className="online-modal-title">Remove entry?</div>
+                  <div className="online-modal-body">
+                    Entry {onlineRemoveTarget.index}: {onlineRemoveTarget.timestamp}
+                  </div>
+                  <div className="online-modal-actions">
+                    <button
+                      className="online-app-button"
+                      type="button"
+                      disabled={onlineLoading}
+                      onClick={() => setOnlineRemoveTarget(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="online-app-button danger"
+                      type="button"
+                      disabled={onlineLoading}
+                      onClick={handleOnlineRemove}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      <footer className="desktop-taskbar">
+        <button
+          className={`taskbar-app ${terminalOpen ? 'active' : ''}`}
+          type="button"
+          aria-label="Terminal"
+          onClick={openTerminal}
+        >
+          <span className="taskbar-icon" aria-hidden="true">_&gt;</span>
+        </button>
+        <button
+          className={`taskbar-app online-taskbar-app ${onlineOpen ? 'active' : ''}`}
+          type="button"
+          aria-label="Online"
+          onClick={openOnlineApp}
+        >
+          <span className="taskbar-icon" aria-hidden="true">●</span>
+        </button>
+        <div className="taskbar-spacer" />
+        <div className="taskbar-clock">grimOS</div>
+      </footer>
     </div>
   )
 }
