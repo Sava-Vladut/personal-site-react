@@ -4,7 +4,8 @@ export const DEFAULT_COMMANDS = [
   'projects',
   'links',
   'theme',
-  'miner',
+  'online',
+  'table',
   'clear',
 ]
 

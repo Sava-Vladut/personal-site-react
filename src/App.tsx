@@ -13,7 +13,19 @@ import { DEFAULT_COMMANDS, THEMES } from './config/terminal'
 import { downloadList, getProjectFolders } from './data/downloads'
 import { parseCommandAliases } from './lib/commandAliases'
 import { createId } from './lib/ids'
+import { getAdjustedOnlineTimestamp } from './lib/onlineLog'
 import type { HistoryItem } from './types/terminal'
+
+type OnlineLogResponse = {
+  ok: boolean
+  error?: string
+}
+
+type OnlineTableResponse = {
+  ok: boolean
+  rows?: string[]
+  error?: string
+}
 
 function App() {
   const [input, setInput] = useState('')
@@ -87,7 +99,8 @@ function App() {
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>projects</span> &nbsp;&lt;folder&gt; List projects in a folder</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>links</span> &nbsp;List all project links</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>theme</span> &nbsp;Switch color theme</div>
-              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>miner</span> &nbsp;Open mining dashboard</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>online</span> &nbsp;&lt;duration&gt; Log adjusted online time</div>
+              <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>table</span> &nbsp;Show online log table</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>clear</span> &nbsp;Clear the terminal screen</div>
               <div><span style={{color: '#ce9178', fontWeight: 'bold'}}>help</span>  &nbsp;&nbsp;Show this help message</div>
             </div>
@@ -198,14 +211,105 @@ function App() {
         break
       }
 
-      case 'miner':
-        window.open('http://grimnetwork.srvp.ro:5000/', '_blank', 'noopener,noreferrer')
-        newHistory.push({
-          id: createId(),
-          type: 'output',
-          content: <span style={{color: '#4ec9b0'}}>Opening mining dashboard...</span>,
-        })
+      case 'online': {
+        if (parts.length > 2) {
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>Usage: online &lt;duration&gt;</span>,
+          })
+          break
+        }
+
+        const result = getAdjustedOnlineTimestamp(parts[1])
+        if (!result.ok) {
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>{result.error}</span>,
+          })
+          break
+        }
+
+        try {
+          const response = await fetch('/api/online', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ timestamp: result.timestamp }),
+          })
+          const data = await response.json() as OnlineLogResponse
+
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Unable to write online log.')
+          }
+
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#4ec9b0'}}>Online time logged: {result.timestamp}</span>,
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unable to write online log.'
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>Online log failed: {message}</span>,
+          })
+        }
         break
+      }
+
+      case 'table': {
+        if (parts.length > 1) {
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>Usage: table</span>,
+          })
+          break
+        }
+
+        try {
+          const response = await fetch('/api/online')
+          const data = await response.json() as OnlineTableResponse
+
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Unable to read online log.')
+          }
+
+          const rows = data.rows ?? []
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: rows.length === 0 ? (
+              <div>No online log entries found.</div>
+            ) : (
+              <div className="online-table">
+                <div className="online-table-row online-table-header">
+                  <span>#</span>
+                  <span>Timestamp</span>
+                </div>
+                {rows.map((timestamp, index) => (
+                  <div className="online-table-row" key={`${timestamp}-${index}`}>
+                    <span>{index + 1}</span>
+                    <span>{timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            ),
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unable to read online log.'
+          newHistory.push({
+            id: createId(),
+            type: 'output',
+            content: <span style={{color: '#e81123'}}>Table failed: {message}</span>,
+          })
+        }
+        break
+      }
 
       case 'clear':
         setHistory([])

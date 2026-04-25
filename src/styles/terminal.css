@@ -208,3 +208,23 @@
   background: var(--link-hover-bg);
   color: var(--link-hover-text);
 }
+
+.online-table {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  gap: 4px 24px;
+}
+
+.online-table-row {
+  display: contents;
+}
+
+.online-table-row span:first-child {
+  color: var(--muted);
+  text-align: right;
+}
+
+.online-table-header span {
+  color: var(--accent);
+  font-weight: bold;
+}
