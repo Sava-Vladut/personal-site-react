@@ -167,30 +167,6 @@
   color: #ffd59e;
 }
 
-.permissions { color: #d7ba7d; }
-.owner { color: var(--link); }
-.size { color: var(--muted); }
-.date { color: #569cd6; }
-.name { 
-  color: var(--accent); 
-  font-weight: bold;
-}
-
-.details {
-  margin-top: 4px;
-  margin-left: 0;
-  color: var(--muted);
-  font-size: 0.9em;
-  padding-left: 14px;
-  border-left: 2px solid var(--scroll-thumb);
-}
-
-.links a {
-  color: var(--link);
-  text-decoration: none;
-  border-bottom: 1px dotted var(--link);
-}
-
 .ascii-wave {
   line-height: 1.2;
   font-size: 0.64rem;
@@ -222,11 +198,6 @@
   }
 }
 
-.links a:hover {
-  background: var(--link-hover-bg);
-  color: var(--link-hover-text);
-}
-
 .linkified {
   color: var(--link);
   text-decoration: none;
@@ -236,17 +207,4 @@
 .linkified:hover {
   background: var(--link-hover-bg);
   color: var(--link-hover-text);
-}
-
-/* ASCII Art Wave Animation */
-@keyframes waveMotion {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-
-.wave-char {
-  display: inline-block;
-  color: var(--prompt);
-  animation: waveMotion 1s ease-in-out infinite;
-  will-change: transform;
 }

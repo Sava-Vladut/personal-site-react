@@ -1,7 +1,7 @@
-# Repository Guidelines
+# Agent Guidelines
 
 ## Project Structure & Module Organization
-This is a React + TypeScript app built with Vite. Key locations:
+This is a React + TypeScript terminal-style portfolio app built with Vite. Key locations:
 - `src/main.tsx` mounts the app.
 - `src/App.tsx` contains the terminal command engine and most UI state.
 - `src/components/` contains terminal UI components (`TerminalHeader`, `TerminalBody`, `AsciiWave`, `LinkifiedText`).
@@ -9,9 +9,9 @@ This is a React + TypeScript app built with Vite. Key locations:
 - `src/data/` contains content adapters/parsers for root-level text files, such as `downloads.txt`.
 - `src/lib/` contains framework-light helper logic such as command alias parsing and ID generation.
 - `src/styles/` and `src/index.css` contain theme and layout styles.
-- `src/assets/` stores static assets loaded by the app (for example, `ascii.txt`).
+- `src/assets/ascii.txt` stores the startup ASCII banner.
 - `src/types/` defines shared TypeScript types.
-- `public/` hosts static files copied as-is at build time.
+- `public/` hosts static files copied as-is at build time; `public/icon.png` is used as the favicon.
 - Root-level content files drive terminal output and behavior:
   - `commands.txt` maps command aliases.
   - `downloads.txt` powers the `projects <folder>` command.
@@ -35,10 +35,11 @@ Run commands from `my-app/`:
 - Follow ESLint and TypeScript strictness (`noUnusedLocals`, `noUnusedParameters`); fix lint/type errors before PRs.
 
 ## Content-Driven Commands
-- When adding or renaming a command in `src/App.tsx`, update `commands.txt` aliases in the same change.
-- Keep the `help` command output in `src/App.tsx` aligned with implemented commands.
+- When adding, removing, or renaming a command in `src/App.tsx`, update `commands.txt` and `src/config/terminal.ts` in the same change.
+- Keep the `help` command output aligned with implemented commands.
 - Preserve `downloads.txt` format: `Label | URL | Folder` (comments allowed with `#`).
 - Keep content parsing in `src/data/` or `src/lib/` instead of adding new parsing helpers directly to `src/App.tsx`.
+- Avoid keeping unused content files, generated logs, or project metadata in `src/` unless the app imports them.
 
 ## Production Deployment
 - `npm run build` produces a static site in `dist/` that can be served by Nginx or another static file server.

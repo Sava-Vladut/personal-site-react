@@ -16,7 +16,7 @@ const LinkifiedText = ({ text }: LinkifiedTextProps) => {
           <div key={`line-${lineIndex}`}>
             {parts.map((part, index) => {
               const match = matches[index]
-              if (!match) return part
+              if (!match) return <span key={`part-${lineIndex}-${index}`}>{part}</span>
               return (
                 <span key={`part-${lineIndex}-${index}`}>
                   {part}
@@ -26,7 +26,6 @@ const LinkifiedText = ({ text }: LinkifiedTextProps) => {
                 </span>
               )
             })}
-            {parts.length > matches.length ? parts[parts.length - 1] : null}
           </div>
         )
       })}

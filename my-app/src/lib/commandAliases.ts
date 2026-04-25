@@ -1,6 +1,5 @@
 export const parseCommandAliases = (text: string, fallback: string[]) => {
   const aliasMap = new Map<string, string>()
-  const canonicalSet = new Set<string>()
   const lines = text
     .split('\n')
     .map((line) => line.trim())
@@ -10,14 +9,12 @@ export const parseCommandAliases = (text: string, fallback: string[]) => {
     fallback.forEach((command) => {
       const normalized = command.toLowerCase()
       aliasMap.set(normalized, normalized)
-      canonicalSet.add(normalized)
     })
   } else {
     lines.forEach((line) => {
       const [canonicalPart, aliasPart = ''] = line.split(':')
       const canonical = canonicalPart.trim().toLowerCase()
       if (!canonical) return
-      canonicalSet.add(canonical)
       aliasMap.set(canonical, canonical)
       aliasPart
         .split(',')
@@ -32,4 +29,3 @@ export const parseCommandAliases = (text: string, fallback: string[]) => {
     commands: Array.from(aliasMap.keys()),
   }
 }
-

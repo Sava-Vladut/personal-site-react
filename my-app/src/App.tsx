@@ -17,7 +17,7 @@ import type { HistoryItem } from './types/terminal'
 
 function App() {
   const [input, setInput] = useState('')
-  const [maximized, setMaximized] = useState(true)
+  const [maximized, setMaximized] = useState(false)
   const [theme, setTheme] = useState('matrix')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -109,9 +109,6 @@ function App() {
 
       case 'projects': {
         const folderFilter = parts[1]?.toLowerCase()
-        const availableFolders = Array.from(
-          new Set(downloadList.map((archive) => archive.folder))
-        ).sort((a, b) => a.localeCompare(b))
         if (!folderFilter) {
           newHistory.push({
             id: createId(),
@@ -119,7 +116,7 @@ function App() {
             content: (
               <div>
                 <div>Usage: <span style={{color: '#ce9178'}}>projects</span> &lt;folder&gt;</div>
-                <div>Available folders: {availableFolders.join(', ')}</div>
+                <div>Available folders: {projectFolders.join(', ')}</div>
               </div>
             )
           })
@@ -138,7 +135,7 @@ function App() {
               ) : filteredDownloads.length === 0 ? (
                 <div>
                   <div>No projects found in folder: {folderFilter}</div>
-                  <div>Available folders: {availableFolders.join(', ')}</div>
+                  <div>Available folders: {projectFolders.join(', ')}</div>
                 </div>
               ) : (
                 filteredDownloads.map((archive) => (
