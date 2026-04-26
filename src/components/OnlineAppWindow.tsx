@@ -1,7 +1,7 @@
 import type { FormEvent, PointerEventHandler, RefObject } from 'react'
 import TerminalHeader from './TerminalHeader'
 import { getTimePassed } from '../lib/timePassed'
-import { formatRomaniaTimestamp } from '../lib/romaniaTime'
+import { formatRomaniaTimestamp, parseRomaniaTimestamp } from '../lib/romaniaTime'
 import type { OnlineRemoveTarget, WindowPosition } from '../types/apps'
 
 type OnlineTab = 'log' | 'graph'
@@ -33,28 +33,45 @@ type OnlineAppWindowProps = {
   onRemove: () => void
 }
 
-const getLastThreeDayBuckets = (rows: string[]) => {
-  const today = new Date()
-  const buckets = Array.from({ length: 3 }, (_, index) => {
-    const date = new Date(today.getTime() - (2 - index) * 86_400_000)
-    const key = formatRomaniaTimestamp(date).slice(0, 10)
+const THREE_DAYS_MS = 3 * 86_400_000
+
+const formatTimelineLabel = (date: Date, fallback: string) => {
+  const todayKey = formatRomaniaTimestamp(new Date()).slice(0, 10)
+  const dateKey = formatRomaniaTimestamp(date).slice(0, 10)
+
+  if (dateKey === todayKey) return 'Today'
+
+  return fallback
+}
+
+const getThreeDayTimeline = (rows: string[]) => {
+  const nowMs = Date.now()
+  const startMs = nowMs - THREE_DAYS_MS
+  const dayMs = 86_400_000
+  const entries = rows
+    .map((timestamp) => ({
+      timestamp,
+      timestampMs: parseRomaniaTimestamp(timestamp),
+    }))
+    .filter(({ timestampMs }) => !Number.isNaN(timestampMs) && timestampMs >= startMs && timestampMs <= nowMs)
+    .map(({ timestamp, timestampMs }) => ({
+      timestamp,
+      position: ((timestampMs - startMs) / THREE_DAYS_MS) * 100,
+    }))
+
+  const markers = Array.from({ length: 4 }, (_, index) => {
+    const markerMs = startMs + index * dayMs
+    const date = new Date(markerMs)
+    const timestamp = formatRomaniaTimestamp(date)
 
     return {
-      key,
-      label: index === 2 ? 'Today' : key.slice(5),
-      count: 0,
-    }
-  })
-  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]))
-
-  rows.forEach((timestamp) => {
-    const bucket = bucketMap.get(timestamp.slice(0, 10))
-    if (bucket) {
-      bucket.count += 1
+      key: timestamp,
+      label: index === 3 ? 'Now' : formatTimelineLabel(date, timestamp.slice(5, 10)),
+      position: (index / 3) * 100,
     }
   })
 
-  return buckets
+  return { entries, markers }
 }
 
 const OnlineAppWindow = ({
@@ -83,8 +100,7 @@ const OnlineAppWindow = ({
   onRemoveTargetChange,
   onRemove,
 }: OnlineAppWindowProps) => {
-  const graphRows = getLastThreeDayBuckets(rows)
-  const maxGraphCount = Math.max(1, ...graphRows.map((bucket) => bucket.count))
+  const graphTimeline = getThreeDayTimeline(rows)
 
   return (
   <div
@@ -208,20 +224,43 @@ const OnlineAppWindow = ({
         </>
       ) : (
         <div className="online-graph-panel">
-          <div className="online-graph-title">Last 3 Days Activity</div>
+          <div className="online-graph-heading">
+            <div className="online-graph-title">Last 3 Days Activity</div>
+            <div className="online-graph-count">{graphTimeline.entries.length} entries</div>
+          </div>
           <div className="online-graph">
-            {graphRows.map((bucket) => (
-              <div className="online-graph-bar-row" key={bucket.key}>
-                <span>{bucket.label}</span>
-                <div className="online-graph-track" aria-label={`${bucket.count} entries on ${bucket.key}`}>
-                  <div style={{ width: `${Math.max(4, (bucket.count / maxGraphCount) * 100)}%` }} />
-                </div>
-                <strong>{bucket.count}</strong>
-              </div>
-            ))}
+            <div
+              className="online-graph-track"
+              aria-label={`${graphTimeline.entries.length} online entries from the last 3 days`}
+            >
+              {graphTimeline.markers.map((marker) => (
+                <div
+                  className="online-graph-marker"
+                  key={marker.key}
+                  style={{ left: `${marker.position}%` }}
+                  aria-hidden="true"
+                />
+              ))}
+              {graphTimeline.entries.map((entry, index) => (
+                <span
+                  className="online-graph-dot"
+                  key={`${entry.timestamp}-${index}`}
+                  style={{ left: `${entry.position}%` }}
+                  title={entry.timestamp}
+                  aria-label={entry.timestamp}
+                />
+              ))}
+            </div>
+            <div className="online-graph-labels" aria-hidden="true">
+              {graphTimeline.markers.map((marker) => (
+                <span key={marker.key} style={{ left: `${marker.position}%` }}>
+                  {marker.label}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="online-graph-note">
-            Counts are grouped by Romania calendar day.
+            Dots are placed by exact Romania timestamp across the last 72 hours.
           </div>
         </div>
       )}

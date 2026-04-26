@@ -362,42 +362,93 @@
   text-transform: uppercase;
 }
 
-.online-graph {
-  display: grid;
+.online-graph-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 12px;
 }
 
-.online-graph-bar-row {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 42px;
-  align-items: center;
-  gap: 10px;
-  color: var(--desktop-text, #f1f1e6);
+.online-graph-count {
+  color: var(--muted);
+  font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.online-graph-bar-row span,
+.online-graph {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 4px 2px;
+}
+
 .online-graph-note {
   color: var(--muted);
   font-size: 0.8rem;
 }
 
 .online-graph-track {
-  height: 28px;
+  position: relative;
+  height: 42px;
   border: 1px solid var(--desktop-icon-border, #56513f);
   background: var(--desktop-window, #11110f);
-  overflow: hidden;
+  overflow: visible;
 }
 
-.online-graph-track div {
-  height: 100%;
+.online-graph-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--desktop-icon-border, #56513f);
+  transform: translateY(-50%);
+}
+
+.online-graph-marker {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: color-mix(in srgb, var(--desktop-icon-border, #56513f) 72%, transparent);
+  transform: translateX(-50%);
+}
+
+.online-graph-dot {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--desktop-window, #11110f);
+  border-radius: 50%;
   background: var(--desktop-accent, #ded7bd);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--desktop-accent, #ded7bd) 42%, transparent);
+  transform: translate(-50%, -50%);
 }
 
-.online-graph-bar-row strong {
-  color: var(--desktop-accent, #ded7bd);
-  text-align: right;
+.online-graph-labels {
+  position: relative;
+  height: 18px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.online-graph-labels span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.online-graph-labels span:first-child {
+  transform: translateX(0);
+}
+
+.online-graph-labels span:last-child {
+  transform: translateX(-100%);
 }
 
 .online-app-link-button {
