@@ -1,6 +1,7 @@
+import { parseRomaniaTimestamp } from './romaniaTime'
+
 export const getTimePassed = (timestamp: string) => {
-  const normalizedTimestamp = timestamp.replace(' ', 'T')
-  const timestampMs = new Date(normalizedTimestamp).getTime()
+  const timestampMs = parseRomaniaTimestamp(timestamp)
 
   if (Number.isNaN(timestampMs)) {
     return 'Unknown'

@@ -12,26 +12,30 @@ const minIntervalMinutes = Number(process.env.INSTAGRAM_MIN_INTERVAL_MINUTES || 
 const maxIntervalMinutes = Number(process.env.INSTAGRAM_MAX_INTERVAL_MINUTES || 40)
 const requestDelayMs = Number(process.env.INSTAGRAM_REQUEST_DELAY_MS || 2500)
 const cookie = process.env.INSTAGRAM_COOKIE || ''
+const romaniaTimestampFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Bucharest',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+})
 
 const sleep = (ms) => new Promise((resolve) => {
   setTimeout(resolve, ms)
 })
 
 const timestamp = () => {
-  const date = new Date()
-  const pad = (value) => String(value).padStart(2, '0')
+  const parts = Object.fromEntries(
+    romaniaTimestampFormatter
+      .formatToParts(new Date())
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
 
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join('-')
-    + ' '
-    + [
-      pad(date.getHours()),
-      pad(date.getMinutes()),
-      pad(date.getSeconds()),
-    ].join(':')
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 const csvEscape = (value) => {
@@ -126,6 +130,37 @@ export const readUsers = async () => {
     .map((line) => line.replace(/^@/, '').toLowerCase())
 
   return [...new Set(users)]
+}
+
+export const removeLogRow = async (index) => {
+  const rowIndex = Number(index)
+
+  if (!Number.isSafeInteger(rowIndex) || rowIndex < 1) {
+    throw new Error('Index must be a positive number.')
+  }
+
+  const contents = await readFile(csvPath, 'utf8').catch((error) => {
+    if (error?.code === 'ENOENT') return ''
+    throw error
+  })
+  const lines = contents
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  const hasHeader = lines[0]?.startsWith('timestamp,')
+  const header = hasHeader ? lines[0] : ''
+  const rows = hasHeader ? lines.slice(1) : lines
+
+  if (rowIndex > rows.length) {
+    throw new Error(`No Instagram log entry found at index ${rowIndex}.`)
+  }
+
+  const [removed] = rows.splice(rowIndex - 1, 1)
+  const nextLines = header ? [header, ...rows] : rows
+  await mkdir(dirname(csvPath), { recursive: true })
+  await writeFile(csvPath, nextLines.length > 0 ? `${nextLines.join('\n')}\n` : '', 'utf8')
+
+  return removed
 }
 
 export const readTrackerState = async () => readState()

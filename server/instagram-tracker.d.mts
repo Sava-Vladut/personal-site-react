@@ -3,6 +3,7 @@ export const csvPath: string
 export const statePath: string
 
 export function readUsers(): Promise<string[]>
+export function removeLogRow(index: number): Promise<string>
 export function readLogRows(): Promise<string[]>
 export function readTrackerState(): Promise<Record<string, unknown>>
 export function logAllUsers(): Promise<void>

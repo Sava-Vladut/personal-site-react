@@ -1,4 +1,4 @@
-import type { PointerEventHandler, RefObject } from 'react'
+import type { ChangeEventHandler, PointerEventHandler, RefObject } from 'react'
 import { DESKTOP_THEMES } from '../config/desktopThemes'
 import type { DesktopTheme, WindowPosition } from '../types/apps'
 import TerminalHeader from './TerminalHeader'
@@ -8,12 +8,16 @@ type SettingsAppWindowProps = {
   maximized: boolean
   position: WindowPosition | null
   theme: DesktopTheme
+  wallpaper: string
+  wallpaperMessage: string
   onDragStart: PointerEventHandler<HTMLDivElement>
   onMinimize: () => void
   onToggleMaximize: () => void
   onClose: () => void
   onThemeChange: (theme: DesktopTheme) => void
   onThemeValueChange: (key: keyof DesktopTheme, value: string) => void
+  onWallpaperUpload: ChangeEventHandler<HTMLInputElement>
+  onWallpaperClear: () => void
 }
 
 const colorFields: Array<{
@@ -36,12 +40,16 @@ const SettingsAppWindow = ({
   maximized,
   position,
   theme,
+  wallpaper,
+  wallpaperMessage,
   onDragStart,
   onMinimize,
   onToggleMaximize,
   onClose,
   onThemeChange,
   onThemeValueChange,
+  onWallpaperUpload,
+  onWallpaperClear,
 }: SettingsAppWindowProps) => (
   <div
     ref={windowRef}
@@ -76,6 +84,31 @@ const SettingsAppWindow = ({
               <span>{preset.name}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <div className="settings-section-title">Wallpaper</div>
+        <div className="settings-wallpaper-panel">
+          <div className={`settings-wallpaper-preview ${wallpaper ? 'has-wallpaper' : ''}`}>
+            {wallpaper ? (
+              <img src={wallpaper} alt="" />
+            ) : (
+              <span>No wallpaper</span>
+            )}
+          </div>
+          <div className="settings-wallpaper-actions">
+            <label className="settings-file-button">
+              <span>Upload image</span>
+              <input type="file" accept="image/*" onChange={onWallpaperUpload} />
+            </label>
+            <button type="button" onClick={onWallpaperClear} disabled={!wallpaper}>
+              Clear
+            </button>
+          </div>
+          {wallpaperMessage && (
+            <div className="settings-wallpaper-message">{wallpaperMessage}</div>
+          )}
         </div>
       </div>
 

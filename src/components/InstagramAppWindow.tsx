@@ -1,6 +1,6 @@
 import type { PointerEventHandler, RefObject } from 'react'
 import TerminalHeader from './TerminalHeader'
-import type { InstagramLogRow, WindowPosition } from '../types/apps'
+import type { InstagramLogRow, InstagramRemoveTarget, WindowPosition } from '../types/apps'
 
 type InstagramAppWindowProps = {
   windowRef: RefObject<HTMLDivElement | null>
@@ -11,12 +11,15 @@ type InstagramAppWindowProps = {
   selectedUser: string
   message: string
   loading: boolean
+  removeTarget: InstagramRemoveTarget | null
   lastChecked?: string
   onDragStart: PointerEventHandler<HTMLDivElement>
   onMinimize: () => void
   onToggleMaximize: () => void
   onClose: () => void
   onSelectedUserChange: (value: string) => void
+  onRemoveTargetChange: (target: InstagramRemoveTarget | null) => void
+  onRemove: () => void
   onRefresh: () => void
 }
 
@@ -29,12 +32,15 @@ const InstagramAppWindow = ({
   selectedUser,
   message,
   loading,
+  removeTarget,
   lastChecked,
   onDragStart,
   onMinimize,
   onToggleMaximize,
   onClose,
   onSelectedUserChange,
+  onRemoveTargetChange,
+  onRemove,
   onRefresh,
 }: InstagramAppWindowProps) => (
   <div
@@ -75,7 +81,7 @@ const InstagramAppWindow = ({
 
       <div className="instagram-user-list">
         {users.length === 0 ? (
-          <span>Add usernames to instagram-users.txt.</span>
+          <span className="instagram-user-empty">Add usernames to instagram-users.txt.</span>
         ) : (
           users.map((user) => {
             const selected = selectedUser === user
@@ -107,6 +113,7 @@ const InstagramAppWindow = ({
               <span>Followers</span>
               <span>Following</span>
               <span>Privacy</span>
+              <span>Action</span>
             </div>
             {rows.map((row, index) => (
               <div className="instagram-table-row" key={`${row.loggedAt}-${row.username}-${index}`}>
@@ -115,12 +122,55 @@ const InstagramAppWindow = ({
                 <span>{row.followers || '-'}</span>
                 <span>{row.following || '-'}</span>
                 <span>{row.privacy || 'unknown'}</span>
+                <span>
+                  <button
+                    className="online-app-link-button danger"
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onRemoveTargetChange({
+                      index: row.index,
+                      loggedAt: row.loggedAt,
+                      username: row.username,
+                    })}
+                  >
+                    Remove
+                  </button>
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
     </div>
+
+    {removeTarget && (
+      <div className="online-modal-backdrop" role="presentation">
+        <div className="online-modal" role="dialog" aria-modal="true" aria-labelledby="instagram-remove-title">
+          <div id="instagram-remove-title" className="online-modal-title">Remove log entry?</div>
+          <div className="online-modal-body">
+            Entry {removeTarget.index}: {removeTarget.loggedAt} @{removeTarget.username}
+          </div>
+          <div className="online-modal-actions">
+            <button
+              className="online-app-button"
+              type="button"
+              disabled={loading}
+              onClick={() => onRemoveTargetChange(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="online-app-button danger"
+              type="button"
+              disabled={loading}
+              onClick={onRemove}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 )
 

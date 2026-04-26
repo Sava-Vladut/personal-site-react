@@ -46,7 +46,7 @@ const TerminalWindow = ({
     onClick={onClick}
   >
     <TerminalHeader
-      title="grim@portofolio: ~"
+      title="portfolio: ~"
       onDragStart={onDragStart}
       onMinimize={onMinimize}
       onToggleMaximize={onToggleMaximize}

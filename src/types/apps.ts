@@ -36,9 +36,17 @@ export type InstagramTrackerResponse = {
   csvPath?: string
   usersPath?: string
   error?: string
+  removed?: string
+}
+
+export type InstagramRemoveTarget = {
+  index: number
+  loggedAt: string
+  username: string
 }
 
 export type InstagramLogRow = {
+  index: number
   loggedAt: string
   username: string
   followers: string
@@ -51,6 +59,14 @@ export type InstagramLogRow = {
 export type WindowPosition = {
   x: number
   y: number
+}
+
+export type WeatherState = {
+  temperatureC: number
+  apparentTemperatureC: number
+  windKmh: number
+  weatherCode: number
+  observedAt: string
 }
 
 export type DesktopTheme = {

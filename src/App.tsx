@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react'
 import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
@@ -6,13 +6,14 @@ import linksText from '../links.txt?raw'
 import userText from '../user.txt?raw'
 import commandsText from '../commands.txt?raw'
 import AsciiWave from './components/AsciiWave'
+import ClockWeatherAppWindow from './components/ClockWeatherAppWindow'
 import InstagramAppWindow from './components/InstagramAppWindow'
 import LinkifiedText from './components/LinkifiedText'
 import OnlineAppWindow from './components/OnlineAppWindow'
 import SettingsAppWindow from './components/SettingsAppWindow'
 import TerminalWindow from './components/TerminalWindow'
 import { DEFAULT_DESKTOP_THEME } from './config/desktopThemes'
-import { DESKTOP_THEME_STORAGE_KEY, SYSTEM_APPS_VISIBLE_STORAGE_KEY } from './config/storage'
+import { DESKTOP_THEME_STORAGE_KEY, DESKTOP_WALLPAPER_STORAGE_KEY, SYSTEM_APPS_VISIBLE_STORAGE_KEY } from './config/storage'
 import { DEFAULT_COMMANDS, HIDDEN_COMMANDS, THEMES } from './config/terminal'
 import { downloadList, getProjectFolders } from './data/downloads'
 import { parseCommandAliases } from './lib/commandAliases'
@@ -23,6 +24,7 @@ import { getTimePassed } from './lib/timePassed'
 import { startWindowDrag } from './lib/windowDrag'
 import type {
   InstagramLogRow,
+  InstagramRemoveTarget,
   InstagramTrackerResponse,
   InstagramTrackerState,
   OnlineLogResponse,
@@ -31,6 +33,7 @@ import type {
   OnlineTableResponse,
   WindowPosition,
   DesktopTheme,
+  WeatherState,
 } from './types/apps'
 import type { HistoryItem } from './types/terminal'
 
@@ -65,11 +68,20 @@ const createDesktopThemeStyle = (desktopTheme: DesktopTheme) => ({
   '--desktop-danger': desktopTheme.danger,
 }) as CSSProperties
 
+const readDesktopWallpaper = () => window.localStorage.getItem(DESKTOP_WALLPAPER_STORAGE_KEY) ?? ''
+
 function App() {
   const [input, setInput] = useState('')
   const [maximized, setMaximized] = useState(false)
   const [terminalPosition, setTerminalPosition] = useState<WindowPosition | null>(null)
   const [terminalOpen, setTerminalOpen] = useState(false)
+  const [clockOpen, setClockOpen] = useState(true)
+  const [clockMaximized, setClockMaximized] = useState(false)
+  const [clockPosition, setClockPosition] = useState<WindowPosition | null>(null)
+  const [now, setNow] = useState(() => new Date())
+  const [weather, setWeather] = useState<WeatherState | null>(null)
+  const [weatherMessage, setWeatherMessage] = useState('')
+  const [weatherLoading, setWeatherLoading] = useState(false)
   const [onlineOpen, setOnlineOpen] = useState(false)
   const [onlineMaximized, setOnlineMaximized] = useState(false)
   const [onlinePosition, setOnlinePosition] = useState<WindowPosition | null>(null)
@@ -80,12 +92,15 @@ function App() {
   const [settingsMaximized, setSettingsMaximized] = useState(false)
   const [settingsPosition, setSettingsPosition] = useState<WindowPosition | null>(null)
   const [desktopTheme, setDesktopTheme] = useState(readDesktopTheme)
+  const [desktopWallpaper, setDesktopWallpaper] = useState(readDesktopWallpaper)
+  const [wallpaperMessage, setWallpaperMessage] = useState('')
   const [instagramUsers, setInstagramUsers] = useState<string[]>([])
   const [instagramRows, setInstagramRows] = useState<string[]>([])
   const [instagramState, setInstagramState] = useState<InstagramTrackerState>({})
   const [selectedInstagramUser, setSelectedInstagramUser] = useState('')
   const [instagramMessage, setInstagramMessage] = useState('')
   const [instagramLoading, setInstagramLoading] = useState(false)
+  const [instagramRemoveTarget, setInstagramRemoveTarget] = useState<InstagramRemoveTarget | null>(null)
   const [onlineRows, setOnlineRows] = useState<string[]>([])
   const [onlinePage, setOnlinePage] = useState(1)
   const [onlineDuration, setOnlineDuration] = useState('')
@@ -114,6 +129,7 @@ function App() {
   const inputRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const terminalWindowRef = useRef<HTMLDivElement>(null)
+  const clockWindowRef = useRef<HTMLDivElement>(null)
   const onlineWindowRef = useRef<HTMLDivElement>(null)
   const instagramWindowRef = useRef<HTMLDivElement>(null)
   const settingsWindowRef = useRef<HTMLDivElement>(null)
@@ -128,6 +144,11 @@ function App() {
     setMaximized(false)
   }
 
+  const closeClockApp = () => {
+    setClockOpen(false)
+    setClockMaximized(false)
+  }
+
   const refreshOnlineRows = useCallback(async () => {
     const response = await fetch('/api/online')
     const data = await response.json() as OnlineTableResponse
@@ -137,6 +158,42 @@ function App() {
     }
 
     setOnlineRows(data.rows ?? [])
+  }, [])
+
+  const refreshWeather = useCallback(async () => {
+    setWeatherLoading(true)
+    setWeatherMessage('')
+
+    try {
+      const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=46.357&longitude=25.804&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Europe%2FBucharest')
+      const data = await response.json() as {
+        current?: {
+          time?: string
+          temperature_2m?: number
+          apparent_temperature?: number
+          weather_code?: number
+          wind_speed_10m?: number
+        }
+        reason?: string
+      }
+
+      if (!response.ok || !data.current) {
+        throw new Error(data.reason || 'Unable to read weather.')
+      }
+
+      setWeather({
+        temperatureC: Number(data.current.temperature_2m ?? 0),
+        apparentTemperatureC: Number(data.current.apparent_temperature ?? 0),
+        windKmh: Number(data.current.wind_speed_10m ?? 0),
+        weatherCode: Number(data.current.weather_code ?? 0),
+        observedAt: data.current.time?.replace('T', ' ') ?? '',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to read weather.'
+      setWeatherMessage(`Weather unavailable: ${message}`)
+    } finally {
+      setWeatherLoading(false)
+    }
   }, [])
 
   const closeOnlineApp = () => {
@@ -170,6 +227,43 @@ function App() {
       window.localStorage.setItem(DESKTOP_THEME_STORAGE_KEY, JSON.stringify(nextTheme))
       return nextTheme
     })
+  }
+
+  const handleWallpaperUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setWallpaperMessage('Choose an image file.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      if (!result) {
+        setWallpaperMessage('Wallpaper upload failed.')
+        return
+      }
+
+      try {
+        window.localStorage.setItem(DESKTOP_WALLPAPER_STORAGE_KEY, result)
+        setDesktopWallpaper(result)
+        setWallpaperMessage(`${file.name} saved.`)
+      } catch {
+        setWallpaperMessage('That image is too large for browser storage.')
+      }
+    }
+    reader.onerror = () => setWallpaperMessage('Wallpaper upload failed.')
+    reader.readAsDataURL(file)
+  }
+
+  const handleWallpaperClear = () => {
+    window.localStorage.removeItem(DESKTOP_WALLPAPER_STORAGE_KEY)
+    setDesktopWallpaper('')
+    setWallpaperMessage('Wallpaper cleared.')
   }
 
   const handleOnlineRefresh = useCallback(async () => {
@@ -289,6 +383,39 @@ function App() {
     }
   }
 
+  const handleInstagramRemove = async () => {
+    if (!instagramRemoveTarget) return
+
+    setInstagramLoading(true)
+    setInstagramMessage('')
+
+    try {
+      const response = await fetch('/api/instagram', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ index: instagramRemoveTarget.index }),
+      })
+      const data = await response.json() as InstagramTrackerResponse
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || 'Unable to remove Instagram log entry.')
+      }
+
+      setInstagramUsers(data.users ?? [])
+      setInstagramRows(data.rows ?? [])
+      setInstagramState(data.state ?? {})
+      setInstagramMessage(`Removed entry ${instagramRemoveTarget.index}: ${data.removed ?? instagramRemoveTarget.loggedAt}`)
+      setInstagramRemoveTarget(null)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to remove Instagram log entry.'
+      setInstagramMessage(`Remove failed: ${message}`)
+    } finally {
+      setInstagramLoading(false)
+    }
+  }
+
   const focusInput = () => {
     if (!terminalOpen) return
     const selection = window.getSelection?.()
@@ -299,6 +426,18 @@ function App() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 1000)
+
+    return () => window.clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (!clockOpen) return
+
+    void refreshWeather()
+  }, [clockOpen, refreshWeather])
 
   useEffect(() => {
     if (!onlineOpen) return
@@ -321,7 +460,7 @@ function App() {
   const onlinePageStart = (normalizedOnlinePage - 1) * ONLINE_TABLE_PAGE_SIZE
   const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
   const instagramLogRows: InstagramLogRow[] = instagramRows
-    .map((row) => {
+    .map((row, index) => {
       const values = parseCsvRow(row)
       const [loggedAt = '', username = '', followers = '', following = ''] = values
       const hasPrivacyColumn = values.length >= 7
@@ -330,6 +469,7 @@ function App() {
       const error = hasPrivacyColumn ? values[6] ?? '' : values[5] ?? ''
       const statePrivacy = instagramState[username]?.isPrivate
       return {
+        index: index + 1,
         loggedAt,
         username,
         followers,
@@ -791,10 +931,19 @@ function App() {
 
   return (
     <div className="desktop-shell" style={createDesktopThemeStyle(desktopTheme)}>
-      <main className="desktop-surface" aria-label="Desktop">
+      <main
+        className={`desktop-surface ${desktopWallpaper ? 'has-wallpaper' : ''}`}
+        style={desktopWallpaper ? { backgroundImage: `url(${desktopWallpaper})` } : undefined}
+        aria-label="Desktop"
+      >
         <button className="desktop-icon" type="button" onDoubleClick={openTerminal} onClick={openTerminal}>
           <span className="desktop-icon-glyph" aria-hidden="true">_&gt;</span>
           <span>Terminal</span>
+        </button>
+
+        <button className="desktop-icon" type="button" onDoubleClick={() => setClockOpen(true)} onClick={() => setClockOpen(true)}>
+          <span className="desktop-icon-glyph clock-icon-glyph" aria-hidden="true">N</span>
+          <span>Now</span>
         </button>
 
         {systemAppsVisible && (
@@ -808,13 +957,13 @@ function App() {
               <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
               <span>Instagram</span>
             </button>
-
-            <button className="desktop-icon" type="button" onDoubleClick={() => setSettingsOpen(true)} onClick={() => setSettingsOpen(true)}>
-              <span className="desktop-icon-glyph settings-icon-glyph" aria-hidden="true">S</span>
-              <span>Settings</span>
-            </button>
           </>
         )}
+
+        <button className="desktop-icon" type="button" onDoubleClick={() => setSettingsOpen(true)} onClick={() => setSettingsOpen(true)}>
+          <span className="desktop-icon-glyph settings-icon-glyph" aria-hidden="true">S</span>
+          <span>Settings</span>
+        </button>
 
         {terminalOpen && (
           <TerminalWindow
@@ -836,6 +985,23 @@ function App() {
               setHistoryIndex(-1)
             }}
             onKeyDown={handleKeyDown}
+          />
+        )}
+
+        {clockOpen && (
+          <ClockWeatherAppWindow
+            windowRef={clockWindowRef}
+            maximized={clockMaximized}
+            position={clockPosition}
+            now={now}
+            weather={weather}
+            weatherMessage={weatherMessage}
+            loading={weatherLoading}
+            onDragStart={(event) => startWindowDrag(event, clockWindowRef.current, setClockPosition, clockMaximized)}
+            onMinimize={() => setClockOpen(false)}
+            onToggleMaximize={() => setClockMaximized(!clockMaximized)}
+            onClose={closeClockApp}
+            onRefreshWeather={refreshWeather}
           />
         )}
 
@@ -876,12 +1042,15 @@ function App() {
             selectedUser={selectedInstagramUser}
             message={instagramMessage}
             loading={instagramLoading}
+            removeTarget={instagramRemoveTarget}
             lastChecked={instagramLastChecked}
             onDragStart={(event) => startWindowDrag(event, instagramWindowRef.current, setInstagramPosition, instagramMaximized)}
             onMinimize={() => setInstagramOpen(false)}
             onToggleMaximize={() => setInstagramMaximized(!instagramMaximized)}
             onClose={closeInstagramApp}
             onSelectedUserChange={setSelectedInstagramUser}
+            onRemoveTargetChange={setInstagramRemoveTarget}
+            onRemove={handleInstagramRemove}
             onRefresh={() => refreshInstagramRows('POST')}
           />
         )}
@@ -892,12 +1061,16 @@ function App() {
             maximized={settingsMaximized}
             position={settingsPosition}
             theme={desktopTheme}
+            wallpaper={desktopWallpaper}
+            wallpaperMessage={wallpaperMessage}
             onDragStart={(event) => startWindowDrag(event, settingsWindowRef.current, setSettingsPosition, settingsMaximized)}
             onMinimize={() => setSettingsOpen(false)}
             onToggleMaximize={() => setSettingsMaximized(!settingsMaximized)}
             onClose={closeSettingsApp}
             onThemeChange={handleDesktopThemeChange}
             onThemeValueChange={handleDesktopThemeValueChange}
+            onWallpaperUpload={handleWallpaperUpload}
+            onWallpaperClear={handleWallpaperClear}
           />
         )}
       </main>

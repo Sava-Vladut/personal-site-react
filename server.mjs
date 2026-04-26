@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { mkdir, readFile, stat, appendFile, writeFile } from 'node:fs/promises'
 import { dirname, extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { logAllUsers, readLogRows, readTrackerState, readUsers, startInstagramTracker, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
+import { logAllUsers, readLogRows, readTrackerState, readUsers, removeLogRow, startInstagramTracker, csvPath as instagramCsvPath, usersPath as instagramUsersPath } from './server/instagram-tracker.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = join(__dirname, 'dist')
@@ -147,6 +147,19 @@ const handleInstagramTracker = async (request, response) => {
       sendJson(response, 200, { ok: true, users, rows, state, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to refresh Instagram counts.'
+      sendJson(response, 500, { ok: false, error: message })
+    }
+    return
+  }
+
+  if (request.method === 'DELETE') {
+    try {
+      const body = await readRequestJson(request)
+      const removed = await removeLogRow(Number(body.index))
+      const [users, rows, state] = await Promise.all([readUsers(), readLogRows(), readTrackerState()])
+      sendJson(response, 200, { ok: true, removed, users, rows, state, csvPath: instagramCsvPath, usersPath: instagramUsersPath })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to remove Instagram log entry.'
       sendJson(response, 500, { ok: false, error: message })
     }
     return
