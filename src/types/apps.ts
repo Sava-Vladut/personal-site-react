@@ -23,6 +23,7 @@ export type OnlineRemoveTarget = {
 export type InstagramTrackerState = Record<string, {
   followers?: number
   following?: number
+  isPrivate?: boolean
   lastChecked?: string
   lastChanged?: string
 }>
@@ -42,6 +43,7 @@ export type InstagramLogRow = {
   username: string
   followers: string
   following: string
+  privacy: string
   status: string
   error: string
 }
@@ -49,4 +51,18 @@ export type InstagramLogRow = {
 export type WindowPosition = {
   x: number
   y: number
+}
+
+export type DesktopTheme = {
+  id: string
+  name: string
+  shell: string
+  grid: string
+  text: string
+  icon: string
+  iconBorder: string
+  accent: string
+  window: string
+  windowPanel: string
+  danger: string
 }

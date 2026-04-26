@@ -93,7 +93,7 @@ const appendCsvRow = async (row) => {
     })
 
   if (!exists) {
-    await writeFile(csvPath, 'timestamp,username,followers,following,status,error\n', 'utf8')
+    await writeFile(csvPath, 'timestamp,username,followers,following,privacy,status,error\n', 'utf8')
   }
 
   await appendFile(csvPath, `${row.map(csvEscape).join(',')}\n`, 'utf8')
@@ -155,6 +155,7 @@ const getProfileCountsFromApi = async (username) => {
   return {
     followers: user.edge_followed_by?.count,
     following: user.edge_follow?.count,
+    isPrivate: user.is_private,
   }
 }
 
@@ -182,6 +183,7 @@ const getProfileCountsFromPage = async (username) => {
   return {
     followers: parseCompactCount(countsMatch[1]),
     following: parseCompactCount(countsMatch[2]),
+    isPrivate: undefined,
   }
 }
 
@@ -212,11 +214,15 @@ const logOneUser = async (username) => {
 
     const state = await readState()
     const previous = state[username]
-    const changed = previous?.followers !== counts.followers || previous?.following !== counts.following
+    const privacy = typeof counts.isPrivate === 'boolean' ? (counts.isPrivate ? 'private' : 'public') : 'unknown'
+    const changed = previous?.followers !== counts.followers
+      || previous?.following !== counts.following
+      || (typeof counts.isPrivate === 'boolean' && previous?.isPrivate !== counts.isPrivate)
 
     state[username] = {
       followers: counts.followers,
       following: counts.following,
+      ...(typeof counts.isPrivate === 'boolean' ? { isPrivate: counts.isPrivate } : {}),
       lastChecked: checkedAt,
       lastChanged: changed ? checkedAt : previous?.lastChanged,
     }
@@ -224,12 +230,12 @@ const logOneUser = async (username) => {
     await writeState(state)
 
     if (changed) {
-      await appendCsvRow([checkedAt, username, counts.followers, counts.following, 'ok', ''])
-      console.log(`${username}: ${counts.followers} followers, ${counts.following} following`)
+      await appendCsvRow([checkedAt, username, counts.followers, counts.following, privacy, 'ok', ''])
+      console.log(`${username}: ${counts.followers} followers, ${counts.following} following, ${privacy}`)
       return
     }
 
-    console.log(`${username}: unchanged (${counts.followers} followers, ${counts.following} following)`)
+    console.log(`${username}: unchanged (${counts.followers} followers, ${counts.following} following, ${privacy})`)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     const state = await readState()

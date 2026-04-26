@@ -1,0 +1,58 @@
+import type { DesktopTheme } from '../types/apps'
+
+export const DESKTOP_THEMES: DesktopTheme[] = [
+  {
+    id: 'olive',
+    name: 'Olive CRT',
+    shell: '#171713',
+    grid: '#242217',
+    text: '#f1f1e6',
+    icon: '#11110f',
+    iconBorder: '#56513f',
+    accent: '#ded7bd',
+    window: '#11110f',
+    windowPanel: '#171713',
+    danger: '#9f302a',
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight',
+    shell: '#0d1321',
+    grid: '#1f2a44',
+    text: '#edf2f4',
+    icon: '#111827',
+    iconBorder: '#4b5563',
+    accent: '#64d2ff',
+    window: '#101827',
+    windowPanel: '#172033',
+    danger: '#ff5c70',
+  },
+  {
+    id: 'mono',
+    name: 'Mono',
+    shell: '#111111',
+    grid: '#2a2a2a',
+    text: '#f4f4f4',
+    icon: '#050505',
+    iconBorder: '#767676',
+    accent: '#ffffff',
+    window: '#0b0b0b',
+    windowPanel: '#181818',
+    danger: '#d94b4b',
+  },
+  {
+    id: 'oxide',
+    name: 'Oxide',
+    shell: '#14100f',
+    grid: '#34251f',
+    text: '#f7eee5',
+    icon: '#1b1311',
+    iconBorder: '#7b5d4f',
+    accent: '#ff9f6e',
+    window: '#18110f',
+    windowPanel: '#241916',
+    danger: '#ef5f5f',
+  },
+]
+
+export const DEFAULT_DESKTOP_THEME = DESKTOP_THEMES[0]

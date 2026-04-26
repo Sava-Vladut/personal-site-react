@@ -7,9 +7,8 @@ type InstagramAppWindowProps = {
   maximized: boolean
   position: WindowPosition | null
   users: string[]
-  visibleUsers: string[]
   rows: InstagramLogRow[]
-  filter: string
+  selectedUser: string
   message: string
   loading: boolean
   lastChecked?: string
@@ -17,7 +16,7 @@ type InstagramAppWindowProps = {
   onMinimize: () => void
   onToggleMaximize: () => void
   onClose: () => void
-  onFilterChange: (value: string) => void
+  onSelectedUserChange: (value: string) => void
   onRefresh: () => void
 }
 
@@ -26,9 +25,8 @@ const InstagramAppWindow = ({
   maximized,
   position,
   users,
-  visibleUsers,
   rows,
-  filter,
+  selectedUser,
   message,
   loading,
   lastChecked,
@@ -36,7 +34,7 @@ const InstagramAppWindow = ({
   onMinimize,
   onToggleMaximize,
   onClose,
-  onFilterChange,
+  onSelectedUserChange,
   onRefresh,
 }: InstagramAppWindowProps) => (
   <div
@@ -61,15 +59,6 @@ const InstagramAppWindow = ({
             {users.length} watched user{users.length === 1 ? '' : 's'} · last checked {lastChecked ?? 'never'}
           </div>
         </div>
-        <input
-          className="instagram-filter-input"
-          type="search"
-          value={filter}
-          onChange={(event) => onFilterChange(event.target.value)}
-          placeholder="filter user"
-          autoComplete="off"
-          spellCheck="false"
-        />
         <button
           className="online-app-button primary"
           type="button"
@@ -87,10 +76,21 @@ const InstagramAppWindow = ({
       <div className="instagram-user-list">
         {users.length === 0 ? (
           <span>Add usernames to instagram-users.txt.</span>
-        ) : visibleUsers.length === 0 ? (
-          <span>No users match filter.</span>
         ) : (
-          visibleUsers.map((user) => <span key={user}>@{user}</span>)
+          users.map((user) => {
+            const selected = selectedUser === user
+            return (
+              <button
+                className={`instagram-user-pill ${selected ? 'selected' : ''}`}
+                type="button"
+                key={user}
+                aria-pressed={selected}
+                onClick={() => onSelectedUserChange(selected ? '' : user)}
+              >
+                @{user}
+              </button>
+            )
+          })
         )}
       </div>
 
@@ -106,6 +106,7 @@ const InstagramAppWindow = ({
               <span>User</span>
               <span>Followers</span>
               <span>Following</span>
+              <span>Privacy</span>
             </div>
             {rows.map((row, index) => (
               <div className="instagram-table-row" key={`${row.loggedAt}-${row.username}-${index}`}>
@@ -113,6 +114,7 @@ const InstagramAppWindow = ({
                 <span>@{row.username}</span>
                 <span>{row.followers || '-'}</span>
                 <span>{row.following || '-'}</span>
+                <span>{row.privacy || 'unknown'}</span>
               </div>
             ))}
           </div>

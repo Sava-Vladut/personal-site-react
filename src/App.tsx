@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import './styles/terminal.css'
 import './styles/theme.css'
 import asciiArt from './assets/ascii.txt?raw'
@@ -9,8 +9,10 @@ import AsciiWave from './components/AsciiWave'
 import InstagramAppWindow from './components/InstagramAppWindow'
 import LinkifiedText from './components/LinkifiedText'
 import OnlineAppWindow from './components/OnlineAppWindow'
+import SettingsAppWindow from './components/SettingsAppWindow'
 import TerminalWindow from './components/TerminalWindow'
-import { SYSTEM_APPS_VISIBLE_STORAGE_KEY } from './config/storage'
+import { DEFAULT_DESKTOP_THEME } from './config/desktopThemes'
+import { DESKTOP_THEME_STORAGE_KEY, SYSTEM_APPS_VISIBLE_STORAGE_KEY } from './config/storage'
 import { DEFAULT_COMMANDS, HIDDEN_COMMANDS, THEMES } from './config/terminal'
 import { downloadList, getProjectFolders } from './data/downloads'
 import { parseCommandAliases } from './lib/commandAliases'
@@ -28,10 +30,40 @@ import type {
   OnlineRemoveTarget,
   OnlineTableResponse,
   WindowPosition,
+  DesktopTheme,
 } from './types/apps'
 import type { HistoryItem } from './types/terminal'
 
 const ONLINE_TABLE_PAGE_SIZE = 10
+
+const readDesktopTheme = () => {
+  const storedTheme = window.localStorage.getItem(DESKTOP_THEME_STORAGE_KEY)
+  if (!storedTheme) return DEFAULT_DESKTOP_THEME
+
+  try {
+    const parsedTheme = JSON.parse(storedTheme) as Partial<DesktopTheme>
+    return {
+      ...DEFAULT_DESKTOP_THEME,
+      ...parsedTheme,
+      id: parsedTheme.id ?? 'custom',
+      name: parsedTheme.name ?? 'Custom',
+    } as DesktopTheme
+  } catch {
+    return DEFAULT_DESKTOP_THEME
+  }
+}
+
+const createDesktopThemeStyle = (desktopTheme: DesktopTheme) => ({
+  '--desktop-shell': desktopTheme.shell,
+  '--desktop-grid': desktopTheme.grid,
+  '--desktop-text': desktopTheme.text,
+  '--desktop-icon': desktopTheme.icon,
+  '--desktop-icon-border': desktopTheme.iconBorder,
+  '--desktop-accent': desktopTheme.accent,
+  '--desktop-window': desktopTheme.window,
+  '--desktop-window-panel': desktopTheme.windowPanel,
+  '--desktop-danger': desktopTheme.danger,
+}) as CSSProperties
 
 function App() {
   const [input, setInput] = useState('')
@@ -44,10 +76,14 @@ function App() {
   const [instagramOpen, setInstagramOpen] = useState(false)
   const [instagramMaximized, setInstagramMaximized] = useState(false)
   const [instagramPosition, setInstagramPosition] = useState<WindowPosition | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsMaximized, setSettingsMaximized] = useState(false)
+  const [settingsPosition, setSettingsPosition] = useState<WindowPosition | null>(null)
+  const [desktopTheme, setDesktopTheme] = useState(readDesktopTheme)
   const [instagramUsers, setInstagramUsers] = useState<string[]>([])
   const [instagramRows, setInstagramRows] = useState<string[]>([])
   const [instagramState, setInstagramState] = useState<InstagramTrackerState>({})
-  const [instagramFilter, setInstagramFilter] = useState('')
+  const [selectedInstagramUser, setSelectedInstagramUser] = useState('')
   const [instagramMessage, setInstagramMessage] = useState('')
   const [instagramLoading, setInstagramLoading] = useState(false)
   const [onlineRows, setOnlineRows] = useState<string[]>([])
@@ -80,6 +116,7 @@ function App() {
   const terminalWindowRef = useRef<HTMLDivElement>(null)
   const onlineWindowRef = useRef<HTMLDivElement>(null)
   const instagramWindowRef = useRef<HTMLDivElement>(null)
+  const settingsWindowRef = useRef<HTMLDivElement>(null)
 
   const openTerminal = () => {
     setTerminalOpen(true)
@@ -110,6 +147,29 @@ function App() {
   const closeInstagramApp = () => {
     setInstagramOpen(false)
     setInstagramMaximized(false)
+  }
+
+  const closeSettingsApp = () => {
+    setSettingsOpen(false)
+    setSettingsMaximized(false)
+  }
+
+  const handleDesktopThemeChange = (nextTheme: DesktopTheme) => {
+    setDesktopTheme(nextTheme)
+    window.localStorage.setItem(DESKTOP_THEME_STORAGE_KEY, JSON.stringify(nextTheme))
+  }
+
+  const handleDesktopThemeValueChange = (key: keyof DesktopTheme, value: string) => {
+    setDesktopTheme((currentTheme) => {
+      const nextTheme = {
+        ...currentTheme,
+        id: 'custom',
+        name: 'Custom',
+        [key]: value,
+      }
+      window.localStorage.setItem(DESKTOP_THEME_STORAGE_KEY, JSON.stringify(nextTheme))
+      return nextTheme
+    })
   }
 
   const handleOnlineRefresh = useCallback(async () => {
@@ -262,16 +322,27 @@ function App() {
   const onlinePageRows = onlineRows.slice(onlinePageStart, onlinePageStart + ONLINE_TABLE_PAGE_SIZE)
   const instagramLogRows: InstagramLogRow[] = instagramRows
     .map((row) => {
-      const [loggedAt = '', username = '', followers = '', following = '', status = '', error = ''] = parseCsvRow(row)
-      return { loggedAt, username, followers, following, status, error }
+      const values = parseCsvRow(row)
+      const [loggedAt = '', username = '', followers = '', following = ''] = values
+      const hasPrivacyColumn = values.length >= 7
+      const privacy = hasPrivacyColumn ? values[4] ?? '' : ''
+      const status = hasPrivacyColumn ? values[5] ?? '' : values[4] ?? ''
+      const error = hasPrivacyColumn ? values[6] ?? '' : values[5] ?? ''
+      const statePrivacy = instagramState[username]?.isPrivate
+      return {
+        loggedAt,
+        username,
+        followers,
+        following,
+        privacy: privacy || (typeof statePrivacy === 'boolean' ? (statePrivacy ? 'private' : 'public') : ''),
+        status,
+        error,
+      }
     })
     .filter((row) => row.status !== 'error')
-    .filter((row) => row.username.toLowerCase().includes(instagramFilter.trim().toLowerCase()))
+    .filter((row) => !selectedInstagramUser || row.username.toLowerCase() === selectedInstagramUser.toLowerCase())
     .slice(-30)
     .reverse()
-  const visibleInstagramUsers = instagramUsers.filter((user) => (
-    user.toLowerCase().includes(instagramFilter.trim().toLowerCase())
-  ))
   const instagramLastChecked = instagramUsers
     .map((user) => instagramState[user]?.lastChecked)
     .filter((value): value is string => Boolean(value))
@@ -719,7 +790,7 @@ function App() {
   }
 
   return (
-    <div className="desktop-shell">
+    <div className="desktop-shell" style={createDesktopThemeStyle(desktopTheme)}>
       <main className="desktop-surface" aria-label="Desktop">
         <button className="desktop-icon" type="button" onDoubleClick={openTerminal} onClick={openTerminal}>
           <span className="desktop-icon-glyph" aria-hidden="true">_&gt;</span>
@@ -736,6 +807,11 @@ function App() {
             <button className="desktop-icon" type="button" onDoubleClick={() => setInstagramOpen(true)} onClick={() => setInstagramOpen(true)}>
               <span className="desktop-icon-glyph instagram-icon-glyph" aria-hidden="true">IG</span>
               <span>Instagram</span>
+            </button>
+
+            <button className="desktop-icon" type="button" onDoubleClick={() => setSettingsOpen(true)} onClick={() => setSettingsOpen(true)}>
+              <span className="desktop-icon-glyph settings-icon-glyph" aria-hidden="true">S</span>
+              <span>Settings</span>
             </button>
           </>
         )}
@@ -796,9 +872,8 @@ function App() {
             maximized={instagramMaximized}
             position={instagramPosition}
             users={instagramUsers}
-            visibleUsers={visibleInstagramUsers}
             rows={instagramLogRows}
-            filter={instagramFilter}
+            selectedUser={selectedInstagramUser}
             message={instagramMessage}
             loading={instagramLoading}
             lastChecked={instagramLastChecked}
@@ -806,8 +881,23 @@ function App() {
             onMinimize={() => setInstagramOpen(false)}
             onToggleMaximize={() => setInstagramMaximized(!instagramMaximized)}
             onClose={closeInstagramApp}
-            onFilterChange={setInstagramFilter}
+            onSelectedUserChange={setSelectedInstagramUser}
             onRefresh={() => refreshInstagramRows('POST')}
+          />
+        )}
+
+        {settingsOpen && (
+          <SettingsAppWindow
+            windowRef={settingsWindowRef}
+            maximized={settingsMaximized}
+            position={settingsPosition}
+            theme={desktopTheme}
+            onDragStart={(event) => startWindowDrag(event, settingsWindowRef.current, setSettingsPosition, settingsMaximized)}
+            onMinimize={() => setSettingsOpen(false)}
+            onToggleMaximize={() => setSettingsMaximized(!settingsMaximized)}
+            onClose={closeSettingsApp}
+            onThemeChange={handleDesktopThemeChange}
+            onThemeValueChange={handleDesktopThemeValueChange}
           />
         )}
       </main>
