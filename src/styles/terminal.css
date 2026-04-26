@@ -294,6 +294,37 @@
   font-size: 0.88rem;
 }
 
+.online-app-tabs {
+  display: flex;
+  border: 1px solid var(--desktop-icon-border, #56513f);
+  background: var(--desktop-window-panel, #171713);
+}
+
+.online-app-tabs button {
+  min-width: 92px;
+  min-height: 34px;
+  padding: 0 14px;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--desktop-icon-border, #56513f);
+  color: var(--desktop-text, #f1f1e6);
+  cursor: pointer;
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.online-app-tabs button:hover,
+.online-app-tabs button:focus-visible {
+  background: var(--desktop-grid, #242217);
+  outline: none;
+}
+
+.online-app-tabs button.selected {
+  background: var(--desktop-accent, #ded7bd);
+  color: var(--desktop-window, #11110f);
+  font-weight: 700;
+}
+
 .online-app-table-wrap {
   flex: 1;
   min-height: 0;
@@ -311,6 +342,62 @@
 
 .online-app-empty {
   color: var(--muted);
+}
+
+.online-graph-panel {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  border: 1px solid var(--desktop-icon-border, #56513f);
+  background: var(--desktop-window-panel, #171713);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.online-graph-title {
+  color: var(--desktop-accent, #ded7bd);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.online-graph {
+  display: grid;
+  gap: 12px;
+}
+
+.online-graph-bar-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  color: var(--desktop-text, #f1f1e6);
+  font-variant-numeric: tabular-nums;
+}
+
+.online-graph-bar-row span,
+.online-graph-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.online-graph-track {
+  height: 28px;
+  border: 1px solid var(--desktop-icon-border, #56513f);
+  background: var(--desktop-window, #11110f);
+  overflow: hidden;
+}
+
+.online-graph-track div {
+  height: 100%;
+  background: var(--desktop-accent, #ded7bd);
+}
+
+.online-graph-bar-row strong {
+  color: var(--desktop-accent, #ded7bd);
+  text-align: right;
 }
 
 .online-app-link-button {

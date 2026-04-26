@@ -103,6 +103,7 @@ function App() {
   const [instagramRemoveTarget, setInstagramRemoveTarget] = useState<InstagramRemoveTarget | null>(null)
   const [onlineRows, setOnlineRows] = useState<string[]>([])
   const [onlinePage, setOnlinePage] = useState(1)
+  const [onlineTab, setOnlineTab] = useState<'log' | 'graph'>('log')
   const [onlineDuration, setOnlineDuration] = useState('')
   const [onlineMessage, setOnlineMessage] = useState('')
   const [onlineLoading, setOnlineLoading] = useState(false)
@@ -1019,6 +1020,7 @@ function App() {
             message={onlineMessage}
             loading={onlineLoading}
             removeTarget={onlineRemoveTarget}
+            activeTab={onlineTab}
             onDragStart={(event) => startWindowDrag(event, onlineWindowRef.current, setOnlinePosition, onlineMaximized)}
             onMinimize={() => setOnlineOpen(false)}
             onToggleMaximize={() => setOnlineMaximized(!onlineMaximized)}
@@ -1027,6 +1029,7 @@ function App() {
             onDurationChange={setOnlineDuration}
             onRefresh={handleOnlineRefresh}
             onPageChange={(updater) => setOnlinePage(updater)}
+            onTabChange={setOnlineTab}
             onRemoveTargetChange={setOnlineRemoveTarget}
             onRemove={handleOnlineRemove}
           />
